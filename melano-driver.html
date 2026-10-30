@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ckb" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Melano · گەیەنەر</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@500;700;800;900&family=Outfit:wght@700;900&display=swap">
+<style>
+:root{--bg:#0f1512;--panel:#17201c;--ink:#eaf3ee;--muted:#8fa69a;--line:#263430;--brand:#ff7a1a;--ok:#22c55e;--soft:#1c2a24;--f:"Vazirmatn",Tahoma,sans-serif;--fd:"Outfit",var(--f);color-scheme:dark}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f);font-size:15px;line-height:1.6}
+.wrap{max-width:620px;margin:0 auto;padding:16px;padding-top:max(16px,env(safe-area-inset-top))}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.top b{font-family:var(--fd);font-weight:900;font-size:1.3rem}
+.top .me{font-size:.85rem;color:var(--muted)}
+.login{max-width:360px;margin:12vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px;display:grid;gap:12px}
+.login h1{font-family:var(--fd);text-align:center;margin:0}
+.login .ic{font-size:44px;text-align:center}
+input{font:inherit;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink)}
+.btn{font:inherit;font-weight:900;border:0;border-radius:13px;padding:13px;cursor:pointer;background:linear-gradient(135deg,var(--brand),#ff9a3c);color:#1a0f02}
+.btn.sm{padding:10px 16px;font-size:.9rem}
+.btn.ok{background:linear-gradient(135deg,#22c55e,#15a35a);color:#04210f}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.msg{color:#ff8a74;font-weight:700;text-align:center;min-height:1.2em}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.card.acc{border-color:var(--ok)}
+.chd{display:flex;justify-content:space-between;align-items:center;font-family:var(--fd);font-weight:900}
+.badge{font-size:.72rem;border-radius:99px;padding:3px 10px;font-weight:800}
+.badge.new{background:rgba(255,122,26,.16);color:var(--brand)}
+.badge.mine{background:rgba(34,197,94,.16);color:var(--ok)}
+.items{margin:8px 0;font-size:.92rem}
+.meta{font-size:.85rem;color:var(--muted)}
+.map{display:inline-block;margin:7px 0;color:var(--brand);font-weight:800;font-size:.9rem}
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-family:var(--fd);font-weight:900;font-size:1.1rem;gap:10px}
+.empty{text-align:center;color:var(--muted);padding:40px 0}
+.cfg{background:#3a1b14;color:#ff9a84;padding:8px 12px;font-size:12px;text-align:center}
+.live{font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:5px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);animation:bl 1.4s infinite}
+@keyframes bl{50%{opacity:.3}}
+.gps{border-radius:12px;padding:10px 12px;font-size:.85rem;font-weight:700;margin-bottom:12px;background:var(--soft);color:var(--muted)}
+.gps.on{background:rgba(34,197,94,.14);color:var(--ok)}.gps.bad{background:rgba(255,122,26,.16);color:var(--brand)}
+</style>
+</head>
+<body>
+<div id="cfgWarn" class="cfg" hidden>⚠️ تکایە KEY لە سەرەوەی کۆدەکە دابنێ</div>
+
+<section id="login" class="login">
+  <div class="ic">🛵</div>
+  <h1>گەیەنەر</h1>
+  <input id="dName" placeholder="ناوت" autocomplete="username">
+  <input id="dPin" type="password" placeholder="PIN" autocomplete="current-password">
+  <button class="btn" id="go">چوونەژوورەوە</button>
+  <p class="msg" id="lmsg"></p>
+</section>
+
+<div id="app" class="wrap" hidden>
+  <div class="top">
+    <div><b>🛵 داواکارییەکان</b><div class="me" id="me"></div></div>
+    <div style="display:flex;align-items:center;gap:10px"><span class="live"><span class="dot"></span>زیندوو</span><button class="btn ghost sm" id="out">دەرچوون</button></div>
+  </div>
+  <div id="gps" class="gps" hidden></div>
+  <div id="list"><div class="empty">چاوەڕێ بکە…</div></div>
+</div>
+
+<script>
+const SUPA = "https://ytcoveaoimutrhxshinl.supabase.co/rest/v1/rpc/";
+const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0Y292ZWFvaW11dHJoeHNoaW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzNjc2MTYsImV4cCI6MjEwODk0MzYxNn0.3Pi1oOlXsuLa7H32raI9bo6xitqa6qZHOdqs_1NwOLM";
+const $ = id => document.getElementById(id);
+const money = n => Number(n||0).toLocaleString("en-US") + " د.ع";
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+if (KEY.indexOf("PASTE")===0) $("cfgWarn").hidden=false;
+async function rpc(fn, body){ const r=await fetch(SUPA+fn,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY,Authorization:"Bearer "+KEY},body:JSON.stringify(body||{})}); return r.json(); }
+function bell(){ try{ const A=window.AudioContext||window.webkitAudioContext; if(!A)return; const c=new A(); [988,1319,1760].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+i*0.14;o.type="sine";o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.3,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.6);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+0.6);});}catch(e){} }
+
+let me = { name:"", pin:"" }, timer=null, lastPending=0, started=false;
+try{ const s=JSON.parse(sessionStorage.getItem("mln_drv")||"null"); if(s){ me=s; } }catch(e){}
+
+async function login(){
+  const name=$("dName").value.trim(), pin=$("dPin").value.trim();
+  if(!name||!pin)return; $("go").disabled=true; $("lmsg").textContent="";
+  let r; try{ r=await rpc("driver_login",{p_name:name,p_pin:pin}); }catch(e){ r=null; }
+  $("go").disabled=false;
+  if(!r||!r.ok){ $("lmsg").textContent="ناو یان PIN هەڵەیە."; return; }
+  me={name:name,pin:pin}; try{ sessionStorage.setItem("mln_drv",JSON.stringify(me)); }catch(e){}
+  enter();
+}
+function enter(){ $("login").hidden=true; $("app").hidden=false; $("me").textContent="بەخێربێیت "+me.name; loop(); clearInterval(timer); timer=setInterval(loop,4000); }
+$("go").onclick=login; $("dPin").onkeydown=e=>{if(e.key==="Enter")login();};
+$("out").onclick=()=>{ clearInterval(timer); try{sessionStorage.removeItem("mln_drv");}catch(e){} location.reload(); };
+
+async function loop(){
+  let r; try{ r=await rpc("driver_orders",{p_name:me.name,p_pin:me.pin}); }catch(e){ return; }
+  if(!r||!r.ok){ clearInterval(timer); $("login").hidden=false; $("app").hidden=true; return; }
+  const orders=r.orders||[];
+  gpsSync(orders.some(o=>o.status==="accepted")); sendPos();
+  const pend=orders.filter(o=>o.status==="pending").length;
+  if(started && pend>lastPending) bell();
+  lastPending=pend; started=true;
+  $("list").innerHTML = orders.length ? orders.map(o=>{
+    const mine=o.status==="accepted";
+    const items=(o.items||[]).map(x=>`${esc(x.n)} × ${x.q}`).join("، ");
+    const map=(o.lat&&o.lng)?`<a class="map" href="https://maps.google.com/?q=${o.lat},${o.lng}" target="_blank" rel="noopener">🗺️ شوێنی کڕیار لەسەر نەخشە</a>`:"";
+    return `<div class="card ${mine?'acc':''}">
+      <div class="chd"><span>${esc(o.num)} · ${o.t||""}</span><span class="badge ${mine?'mine':'new'}">${mine?'من دەیبەم':'نوێ 🔔'}</span></div>
+      <div class="items">${items}</div>
+      <div class="meta">👤 ${esc(o.cust_name)} · 📞 ${esc(o.cust_phone)}</div>
+      <div class="meta">📍 ${esc(o.address)}</div>${map}
+      <div class="foot"><b>${money(o.total)}</b>${mine?`<button class="btn ok sm" data-deliver="${esc(o.num)}">✅ گەیاندرا</button>`:`<button class="btn sm" data-take="${esc(o.num)}">🛵 من دەیبەم</button>`}</div>
+    </div>`;
+  }).join("") : `<div class="empty">ئێستا داواکاری نییە. چاوەڕێ بکە 🛵</div>`;
+  $("list").querySelectorAll("[data-take]").forEach(b=>b.onclick=async()=>{ b.disabled=true; const r2=await rpc("accept_order",{p_name:me.name,p_pin:me.pin,p_num:b.dataset.take}); if(r2&&r2.ok)loop(); else{ alert(r2&&r2.error==="taken"?"ئەم داواکارییە وەرگیراوە.":"نەکرا."); loop(); } });
+  $("list").querySelectorAll("[data-deliver]").forEach(b=>b.onclick=async()=>{ b.disabled=true; await rpc("deliver_order",{p_name:me.name,p_pin:me.pin,p_num:b.dataset.deliver}); loop(); });
+}
+// کاتێک داواکارییەکت وەرگرتووە، شوێنەکەت بە زیندوویی بۆ کڕیار دەنێردرێت
+let watchId=null, lastSent=0, pos=null, wake=null;
+function gpsSync(delivering){
+  const el=$("gps");
+  if(delivering && watchId===null && navigator.geolocation){
+    el.className="gps"; el.textContent="📍 چاوەڕێی شوێن…";
+    watchId=navigator.geolocation.watchPosition(p=>{
+      const first=!pos;
+      pos={lat:+p.coords.latitude.toFixed(6), lng:+p.coords.longitude.toFixed(6)};
+      el.className="gps on"; el.textContent="📍 شوێنەکەت بە زیندوویی بۆ کڕیار دەنێردرێت · پەڕەکە دامەخە";
+      sendPos(first);
+    }, ()=>{ el.className="gps bad"; el.textContent="⚠️ ڕێگە بە Location بدە بۆ ئەوەی کڕیار بزانێت لە کوێیت"; }, {enableHighAccuracy:true, maximumAge:5000, timeout:20000});
+    try{ if("wakeLock" in navigator) navigator.wakeLock.request("screen").then(w=>wake=w).catch(()=>{}); }catch(e){}
+  } else if(!delivering && watchId!==null){
+    navigator.geolocation.clearWatch(watchId); watchId=null; pos=null;
+    try{ if(wake){ wake.release(); wake=null; } }catch(e){}
+  }
+  if(delivering && !navigator.geolocation){ el.className="gps bad"; el.textContent="⚠️ ئەم ئامێرە شوێن پشتگیری ناکات"; }
+  el.hidden=!delivering;
+}
+async function sendPos(force){
+  if(!pos) return; const now=Date.now();
+  if(!force && now-lastSent<8000) return; lastSent=now;
+  try{ await rpc("driver_ping",{p_name:me.name,p_pin:me.pin,p_lat:pos.lat,p_lng:pos.lng}); }catch(e){}
+}
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && watchId!==null){ try{ if("wakeLock" in navigator) navigator.wakeLock.request("screen").then(w=>wake=w).catch(()=>{}); }catch(e){} loop(); } });
+if(me.pin) enter();
+</script>
+</body>
+</html>
