@@ -101,6 +101,7 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
   </nav>
 
   <section id="t-orders">
+    <div class="big-sw"><div><b>🖨️ چاپی خۆکار</b><div class="fl" id="apTxt">کاتێک داواکاری نوێ دێت، خۆی چاپ دەکرێت. ئەم پەڕەیە دەبێت کراوە بێت.</div></div><label class="sw"><input type="checkbox" id="apOn"><i></i></label></div>
     <div class="stats" id="stats"></div>
     <div class="card">
       <h2>🛵 گەیەنەرەکان: کێ چەند داواکاری بردووە</h2>
@@ -251,6 +252,52 @@ function showTab(t){
   try{ sessionStorage.setItem("mln_tab",t); }catch(e){}
 }
 
+// ===== چاپ: پسوولە لەسەر قەبارەی کاغەزی چاپکەر؛ داواکاری چاپکراو لەسەر ئەم ئامێرە لەبیر دەمێنێت =====
+let lastOrders=[], autoPrint=false, printQ=[], printing=false;
+try{ autoPrint=localStorage.getItem("mln_autoprint")==="1"; }catch(e){}
+function printedSet(){ try{ return new Set(JSON.parse(localStorage.getItem("mln_printed")||"[]")); }catch(e){ return new Set(); } }
+function savePrinted(s){ try{ localStorage.setItem("mln_printed",JSON.stringify([...s].slice(-300))); }catch(e){} }
+function receiptHtml(o){
+  const rows=(o.items||[]).map(x=>`<tr><td>${esc(x.n)} × ${x.q}</td><td class="n">${nf(x.p*x.q)}</td></tr>`).join("");
+  const sub=(o.total||0)-(o.delivery_fee||0);
+  return `<!doctype html><html lang="ckb" dir="rtl"><head><meta charset="utf-8"><style>
+    @page{margin:5mm}*{box-sizing:border-box}
+    body{margin:0 auto;width:72mm;font-family:Tahoma,Arial,sans-serif;font-size:13px;color:#000;line-height:1.45}
+    h1{font-size:18px;text-align:center;margin:0}.num{font-size:24px;font-weight:bold;text-align:center;margin:4px 0}
+    .c{text-align:center}hr{border:0;border-top:1px dashed #000;margin:6px 0}
+    table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}.n{text-align:left;white-space:nowrap;padding-right:8px}
+    .tot td{font-size:16px;font-weight:bold;border-top:1px solid #000;padding-top:4px}
+    </style></head><body><h1>${esc(SHOP.shop_name||"Melano Fast Food")}</h1><div class="num">${esc(o.num)}</div><div class="c">${esc(o.t)}</div><hr>
+    <table>${rows}<tr><td>خواردن</td><td class="n">${nf(sub)}</td></tr><tr><td>گەیاندن</td><td class="n">${o.delivery_fee?nf(o.delivery_fee):"بێبەرامبەر"}</td></tr><tr class="tot"><td>کۆی گشتی</td><td class="n">${money(o.total)}</td></tr></table><hr>
+    <div><b>${esc(o.cust_name)}</b></div><div dir="ltr" style="text-align:right">${esc(o.cust_phone)}</div><div>${esc(o.address)}</div>
+    ${o.lat&&o.lng?`<div>📍 شوێنی GPS هەیە</div>`:""}<hr><div class="c">سوپاس بۆ داواکارییەکەت</div></body></html>`;
+}
+function printOrder(o){ printQ.push(o); nextPrint(); }
+function nextPrint(){
+  if(printing||!printQ.length) return; printing=true;
+  const f=document.createElement("iframe");
+  f.style.cssText="position:fixed;left:-9999px;top:0;width:302px;height:800px;border:0";
+  f.onload=()=>setTimeout(()=>{
+    try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){ toast("چاپ نەکرا.",true); }
+    setTimeout(()=>{ f.remove(); printing=false; nextPrint(); },2500);
+  },200);
+  f.srcdoc=receiptHtml(printQ.shift());
+  document.body.appendChild(f);
+}
+function autoPrintNew(){
+  if(!autoPrint) return;
+  const s=printedSet(); let n=0;
+  lastOrders.slice().reverse().forEach(o=>{ if((o.status==="pending"||o.status==="accepted")&&!s.has(o.num)){ s.add(o.num); printOrder(o); n++; } });
+  if(n) savePrinted(s);
+}
+$("apOn").checked=autoPrint;
+$("apOn").onchange=()=>{
+  autoPrint=$("apOn").checked;
+  try{ localStorage.setItem("mln_autoprint",autoPrint?"1":"0"); }catch(e){}
+  // داواکارییە کۆنەکان چاپ ناکرێن، تەنها ئەوانەی لە ئێستا بەدواوە دێن
+  if(autoPrint){ const s=printedSet(); lastOrders.forEach(o=>s.add(o.num)); savePrinted(s); toast("چاپی خۆکار چالاکە 🖨️"); }
+};
+
 // ===== داواکاری و ئامار =====
 async function loop(){
   let r; try{ r=await rpc("owner_data",{p_pin:pin}); }catch(e){ return; }
@@ -280,9 +327,11 @@ function paint(d){
   $("orders").innerHTML=(d.orders||[]).length?d.orders.map(o=>{
     const items=(o.items||[]).map(x=>`${esc(x.n)} × ${x.q}`).join("<br>");
     const map=(o.lat&&o.lng)?`<br><a href="https://maps.google.com/?q=${o.lat},${o.lng}" target="_blank" rel="noopener">🗺️ نەخشە</a>`:"";
-    const can=(o.status==="pending"||o.status==="accepted")?`<button class="btn ghost sm red" data-cancel="${esc(o.num)}">هەڵوەشاندنەوە</button>`:"";
+    const can=`<button class="btn ghost sm" data-print="${esc(o.num)}" aria-label="چاپ">🖨️</button>`+((o.status==="pending"||o.status==="accepted")?` <button class="btn ghost sm red" data-cancel="${esc(o.num)}">هەڵوەشاندنەوە</button>`:"");
     return `<tr><td class="nw"><b>${esc(o.num)}</b></td><td class="nw" style="color:var(--muted)">${esc(o.t)}</td><td class="nw">${esc(o.cust_name)}<small dir="ltr">${esc(o.cust_phone)}</small></td><td style="min-width:130px">${items}</td><td style="min-width:150px;max-width:240px">${esc(o.address)}${map}</td><td><span class="pill ${esc(o.status)}">${ST[o.status]||esc(o.status)}</span></td><td class="nw">${esc(o.driver_name||"—")}</td><td class="nw"><b>${money(o.total)}</b>${o.delivery_fee?`<small>گەیاندن: ${money(o.delivery_fee)}</small>`:""}</td><td>${can}</td></tr>`;
   }).join(""):`<tr><td colspan="9" class="empty">هێشتا داواکاری نییە.</td></tr>`;
+  lastOrders=d.orders||[]; autoPrintNew();
+  $("orders").querySelectorAll("[data-print]").forEach(b=>b.onclick=()=>{ const o=lastOrders.find(x=>x.num===b.dataset.print); if(o) printOrder(o); });
   $("orders").querySelectorAll("[data-cancel]").forEach(b=>b.onclick=async()=>{
     if(!confirm(`داواکاری ${b.dataset.cancel} هەڵبوەشێنرێتەوە؟`))return;
     b.disabled=true; if(await act("owner_cancel_order",{p_num:b.dataset.cancel},"هەڵوەشێنرایەوە ✓")) loop(); else b.disabled=false;
