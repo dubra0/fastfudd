@@ -1,0 +1,6 @@
+{
+  "appId": "com.melano.driver",
+  "appName": "Melano Driver",
+  "webDir": "www",
+  "server": { "url": "https://dubra0.github.io/fastfudd/melano-driver.html", "cleartext": false }
+}

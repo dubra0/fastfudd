@@ -1,0 +1,6 @@
+{
+  "appId": "com.melano.food",
+  "appName": "Melano",
+  "webDir": "www",
+  "server": { "url": "https://dubra0.github.io/fastfudd/", "cleartext": false }
+}
