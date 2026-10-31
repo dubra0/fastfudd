@@ -98,6 +98,10 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
   <section id="t-orders">
     <div class="stats" id="stats"></div>
     <div class="card">
+      <h2>🛵 گەیەنەرەکان: کێ چەند داواکاری بردووە</h2>
+      <div class="tbl"><table><thead><tr><th>گەیەنەر</th><th>ئەمڕۆ</th><th>کۆی گشتی</th><th>کۆی پارە</th><th>ئێستا</th></tr></thead><tbody id="drvBoard"></tbody></table></div>
+    </div>
+    <div class="card">
       <h2>📋 داواکارییەکان <small>(دوایین ١٠٠)</small></h2>
       <div class="tbl"><table><thead><tr><th>ژمارە</th><th>کات</th><th>کڕیار</th><th>خواردن</th><th>ناونیشان</th><th>دۆخ</th><th>گەیەنەر</th><th>کۆ</th><th></th></tr></thead><tbody id="orders"></tbody></table></div>
     </div>
@@ -249,6 +253,8 @@ function paint(d){
     <div class="stat"><span>لە ڕێگا</span><b>${nf(s.active)}</b></div>
     <div class="stat"><span>کۆی گەیەنراو</span><b>${nf(s.delivered)}</b></div>
     <div class="stat rev"><span>کۆی داهات</span><b>${money(s.revenue)}</b></div>`;
+  const board=(d.drivers||[]).slice().sort((a,b)=>(b.today||0)-(a.today||0)||(b.delivered||0)-(a.delivered||0));
+  $("drvBoard").innerHTML=board.length?board.map(dr=>`<tr><td class="nw"><b>${esc(dr.name)}</b></td><td><b style="color:var(--brand);font-size:1.1rem">${nf(dr.today)}</b></td><td><b>${nf(dr.delivered)}</b></td><td class="nw">${money(dr.amount)}</td><td class="nw">${dr.active?`🛵 ${nf(dr.active)} لە ڕێگا`:`<span style="color:var(--muted)">بەتاڵە</span>`}</td></tr>`).join(""):`<tr><td colspan="5" class="empty">هێشتا گەیەنەر نییە.</td></tr>`;
   $("drivers").innerHTML=(d.drivers||[]).length?d.drivers.map(dr=>`<div class="drv"><div><b>${esc(dr.name)}</b> <span style="color:var(--muted);font-size:.8rem">(PIN: ${esc(dr.pin)})</span><div class="cnt">✅ ${nf(dr.delivered)} گەیەنراو${dr.active?` · 🛵 ${nf(dr.active)} لە ڕێگا`:""}</div>${(dr.lat!=null&&dr.age!=null&&dr.age<900)?`<a href="https://maps.google.com/?q=${dr.lat},${dr.lng}" target="_blank" rel="noopener" style="color:var(--brand);font-weight:800;font-size:.85rem;text-decoration:none">📍 شوێنی ئێستا (${dr.age<60?dr.age+" چرکە":Math.round(dr.age/60)+" خولەک"} لەمەوبەر)</a>`:""}</div><button class="btn ghost sm red" data-ddrv="${esc(dr.id)}" data-n="${esc(dr.name)}">لابردن</button></div>`).join(""):`<div class="empty">هێشتا گەیەنەر نییە.</div>`;
   $("drivers").querySelectorAll("[data-ddrv]").forEach(b=>b.onclick=async()=>{
     if(!confirm(`"${b.dataset.n}" لاببرێت؟ ئەو داواکارییانەی لە ڕێگان دەگەڕێنەوە بۆ چاوەڕوان.`))return;
