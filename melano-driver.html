@@ -2,6 +2,7 @@
 <html lang="ckb" dir="rtl">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://ytcoveaoimutrhxshinl.supabase.co https://router.project-osrm.org; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <title>Melano · گەیەنەر</title>
@@ -84,7 +85,8 @@ input{font:inherit;padding:12px 14px;border:1px solid var(--line);border-radius:
 </div>
 
 <script>
-const SUPA = "https://ytcoveaoimutrhxshinl.supabase.co/rest/v1/rpc/";
+if(top!==self) top.location=self.location;
+const SUPA ="https://ytcoveaoimutrhxshinl.supabase.co/rest/v1/rpc/";
 const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0Y292ZWFvaW11dHJoeHNoaW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzNjc2MTYsImV4cCI6MjEwODk0MzYxNn0.3Pi1oOlXsuLa7H32raI9bo6xitqa6qZHOdqs_1NwOLM";
 const $ = id => document.getElementById(id);
 const money = n => Number(n||0).toLocaleString("en-US") + " د.ع";
@@ -101,8 +103,9 @@ async function login(){
   if(!name||!pin)return; $("go").disabled=true; $("lmsg").textContent="";
   let r; try{ r=await rpc("driver_login",{p_name:name,p_pin:pin}); }catch(e){ r=null; }
   $("go").disabled=false;
-  if(!r||!r.ok){ $("lmsg").textContent="ناو یان PIN هەڵەیە."; return; }
-  me={name:name,pin:pin}; try{ sessionStorage.setItem("mln_drv",JSON.stringify(me)); }catch(e){}
+  if(!r||!r.ok){ $("lmsg").textContent=!r?"ئینتەرنێت نییە.":(r.ok===false&&!r.error)?"ناو یان PIN هەڵەیە.":"هەوڵی هەڵە زۆر بوو. ٣٠ خولەکی تر هەوڵ بدەرەوە."; return; }
+  // تەنها تۆکنی کاتی هەڵدەگیرێت، نەک PIN
+  me={name:r.name,pin:r.token}; try{ sessionStorage.setItem("mln_drv",JSON.stringify(me)); }catch(e){}
   enter();
 }
 function enter(){ $("login").hidden=true; $("app").hidden=false; $("me").textContent="بەخێربێیت "+me.name; startGps(); loop(); clearInterval(timer); timer=setInterval(loop,4000); }
@@ -111,7 +114,10 @@ $("out").onclick=()=>{ clearInterval(timer); try{sessionStorage.removeItem("mln_
 
 async function loop(){
   let r; try{ r=await rpc("driver_orders",{p_name:me.name,p_pin:me.pin}); }catch(e){ return; }
-  if(!r||!r.ok){ clearInterval(timer); $("login").hidden=false; $("app").hidden=true; return; }
+  if(!r) return;
+  // تەنها وەڵامی ok:false واتە تۆکن بەسەرچووە؛ هەڵەی کاتی نابێت گەیەنەر بباتە دەرەوە
+  if(r.ok===false){ clearInterval(timer); try{sessionStorage.removeItem("mln_drv");}catch(e){} $("login").hidden=false; $("app").hidden=true; return; }
+  if(!r.ok) return;
   const orders=r.orders||[];
   mine=orders.filter(o=>o.status==="accepted"); allOrders=orders; gpsSync(mine.length>0); syncMap(); sendPos();
   const pend=orders.filter(o=>o.status==="pending").length;
@@ -141,8 +147,8 @@ const mkIcon = (L,e,cls) => L.divIcon({className:"mk "+(cls||""),html:`<span>${e
 function loadLeaflet(){
   if(leaflet) return leaflet;
   leaflet = new Promise((res,rej)=>{
-    const l=document.createElement("link"); l.rel="stylesheet"; l.href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"; document.head.appendChild(l);
-    const s=document.createElement("script"); s.src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
+    const l=document.createElement("link"); l.rel="stylesheet"; l.href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"; l.integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb"; l.crossOrigin="anonymous"; document.head.appendChild(l);
+    const s=document.createElement("script"); s.src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"; s.integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO"; s.crossOrigin="anonymous";
     s.onload=()=>res(window.L); s.onerror=()=>{ leaflet=null; rej(); }; document.head.appendChild(s);
   });
   return leaflet;

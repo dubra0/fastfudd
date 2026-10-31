@@ -2,6 +2,7 @@
 <html lang="ckb" dir="rtl">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://ytcoveaoimutrhxshinl.supabase.co https://router.project-osrm.org; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <title>Melano · خاوەن</title>
@@ -104,6 +105,7 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
 
   <section id="t-orders">
     <div class="big-sw"><div><b>🖨️ چاپی خۆکار</b><div class="fl" id="apTxt">کاتێک داواکاری نوێ دێت، خۆی چاپ دەکرێت. ئەم پەڕەیە دەبێت کراوە بێت.</div></div><label class="sw"><input type="checkbox" id="apOn"><i></i></label></div>
+    <div class="row" style="align-items:end;margin-bottom:14px"><div class="f"><label for="paper">پانی کاغەزی چاپکەر</label><select id="paper"><option value="80">80mm (گەورە)</option><option value="58">58mm (بچووک)</option></select></div><button class="btn ghost" id="testPrint">🖨️ چاپی تاقیکردنەوە</button></div>
     <div class="stats" id="stats"></div>
     <div class="card">
       <h2>🛵 گەیەنەرەکان: کێ چەند داواکاری بردووە</h2>
@@ -134,7 +136,7 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
       <h2 style="margin-top:16px;font-size:1rem">زیادکردنی گەیەنەری نوێ</h2>
       <div class="row">
         <div class="f"><label>ناو</label><input id="ndName" placeholder="ناوی گەیەنەر"></div>
-        <div class="f"><label>PIN</label><input id="ndPin" inputmode="numeric" placeholder="PIN"></div>
+        <div class="f"><label>PIN</label><input id="ndPin" inputmode="numeric" placeholder="لانیکەم ٦ پیت یان ژمارە"></div>
         <button class="btn sm" id="addDrv">زیادکردن</button>
       </div>
     </div>
@@ -207,7 +209,8 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
 <div class="toast" id="toast"></div>
 
 <script>
-const SUPA = "https://ytcoveaoimutrhxshinl.supabase.co/rest/v1/rpc/";
+if(top!==self) top.location=self.location;
+const SUPA ="https://ytcoveaoimutrhxshinl.supabase.co/rest/v1/rpc/";
 const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0Y292ZWFvaW11dHJoeHNoaW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzNjc2MTYsImV4cCI6MjEwODk0MzYxNn0.3Pi1oOlXsuLa7H32raI9bo6xitqa6qZHOdqs_1NwOLM";
 const $ = id => document.getElementById(id);
 const money = n => Number(n||0).toLocaleString("en-US") + " د.ع";
@@ -220,7 +223,7 @@ const EMOJIS = ["🍔","🍕","🌯","🌭","🍟","🍗","🥙","🧆","🥗","
 async function rpc(fn, body){ const r=await fetch(SUPA+fn,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY,Authorization:"Bearer "+KEY},body:JSON.stringify(body||{})}); return r.json(); }
 function bell(){ try{ const A=window.AudioContext||window.webkitAudioContext; if(!A)return; const c=new A(); [988,1319,1760].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+i*0.14;o.type="sine";o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.3,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.6);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+0.6);});}catch(e){} }
 function toast(m, bad){ const t=$("toast"); t.textContent=m; t.className="toast on"+(bad?" bad":""); clearTimeout(toast.h); toast.h=setTimeout(()=>t.className="toast"+(bad?" bad":""),2400); }
-const ERR = {name:"تکایە ناو بنووسە.",price:"نرخ هەڵەیە.",pin:"پاسوۆرد دەبێت لانیکەم ٤ پیت یان ژمارە بێت.",fee:"نرخی گەیاندن دەبێت تەنها ژمارە بێت.",cat:"بەشێک هەڵبژێرە.",exists:"گەیەنەرێک بەم ناوە هەیە."};
+const ERR = {name:"تکایە ناو بنووسە.",price:"نرخ هەڵەیە.",pin:"پاسوۆرد دەبێت لانیکەم ٨ پیت یان ژمارە بێت.",dpin:"PIN دەبێت لانیکەم ٦ پیت یان ژمارە بێت.",old:"پاسوۆردی ئێستا هەڵەیە.",locked:"هەوڵی هەڵە زۆر بوو. ٣٠ خولەکی تر هەوڵ بدەرەوە.",fee:"نرخی گەیاندن دەبێت تەنها ژمارە بێت.",cat:"بەشێک هەڵبژێرە.",exists:"گەیەنەرێک بەم ناوە هەیە."};
 async function act(fn, body, okMsg){
   let r; try{ r=await rpc(fn, Object.assign({p_pin:pin}, body)); }catch(e){ r=null; }
   if(r&&r.ok){ if(okMsg)toast(okMsg); return r; }
@@ -233,10 +236,12 @@ try{ pin=sessionStorage.getItem("mln_own")||""; }catch(e){}
 // ===== چوونەژوورەوە =====
 async function login(){
   const p=$("pin").value.trim(); if(!p)return; $("go").disabled=true; $("lmsg").textContent="";
-  let r; try{ r=await rpc("owner_data",{p_pin:p}); }catch(e){ r=null; }
-  $("go").disabled=false;
-  if(!r||!r.ok){ $("lmsg").textContent=r?"پاسوۆرد هەڵەیە.":"ئینتەرنێت نییە."; return; }
-  pin=p; try{ sessionStorage.setItem("mln_own",pin); }catch(e){} enter(r);
+  let r; try{ r=await rpc("owner_login",{p_pin:p}); }catch(e){ r=null; }
+  if(!r||!r.ok){ $("go").disabled=false; $("lmsg").textContent=!r?"ئینتەرنێت نییە.":(r.ok===false&&!r.error)?"پاسوۆرد هەڵەیە.":ERR.locked; return; }
+  // تەنها تۆکنی کاتی هەڵدەگیرێت، نەک پاسوۆرد
+  pin=r.token; try{ sessionStorage.setItem("mln_own",pin); }catch(e){}
+  let d; try{ d=await rpc("owner_data",{p_pin:pin}); }catch(e){ d=null; }
+  $("go").disabled=false; enter(d&&d.ok?d:null);
 }
 function enter(data){
   $("login").hidden=true; $("app").hidden=false; if(data)paint(data);
@@ -256,35 +261,40 @@ function showTab(t){
   try{ sessionStorage.setItem("mln_tab",t); }catch(e){}
 }
 
-// ===== چاپ: پسوولە لەسەر قەبارەی کاغەزی چاپکەر؛ داواکاری چاپکراو لەسەر ئەم ئامێرە لەبیر دەمێنێت =====
-let lastOrders=[], autoPrint=false, printQ=[], printing=false;
-try{ autoPrint=localStorage.getItem("mln_autoprint")==="1"; }catch(e){}
+// ===== چاپ: پسوولە بۆ چاپکەری کاشێر (80mm یان 58mm)؛ داواکاری چاپکراو لەسەر ئەم ئامێرە لەبیر دەمێنێت =====
+let lastOrders=[], autoPrint=false, printQ=[], printing=false, paper=80;
+try{ autoPrint=localStorage.getItem("mln_autoprint")==="1"; paper=localStorage.getItem("mln_paper")==="58"?58:80; }catch(e){}
 function printedSet(){ try{ return new Set(JSON.parse(localStorage.getItem("mln_printed")||"[]")); }catch(e){ return new Set(); } }
 function savePrinted(s){ try{ localStorage.setItem("mln_printed",JSON.stringify([...s].slice(-300))); }catch(e){} }
 function receiptHtml(o){
   const rows=(o.items||[]).map(x=>`<tr><td>${esc(x.n)} × ${x.q}${x.note?`<div class="nt">* ${esc(x.note)}</div>`:""}</td><td class="n">${nf(x.p*x.q)}</td></tr>`).join("");
-  const sub=(o.total||0)-(o.delivery_fee||0);
-  return `<!doctype html><html lang="ckb" dir="rtl"><head><meta charset="utf-8"><style>
-    @page{margin:5mm}*{box-sizing:border-box}
-    body{margin:0 auto;width:72mm;font-family:Tahoma,Arial,sans-serif;font-size:13px;color:#000;line-height:1.45}
-    h1{font-size:18px;text-align:center;margin:0}.num{font-size:24px;font-weight:bold;text-align:center;margin:4px 0}
+  const sub=(o.total||0)-(o.delivery_fee||0), small=paper===58;
+  return `<!doctype html><html lang="ckb" dir="rtl"><head><meta charset="utf-8"><style id="pg">@page{size:${paper}mm 200mm;margin:0}</style><style>
+    *{box-sizing:border-box}html{background:#fff}
+    body{margin:0 auto;width:${small?48:72}mm;padding:1mm 0 12mm;font-family:Tahoma,Arial,sans-serif;font-size:${small?12:14}px;font-weight:bold;color:#000;background:#fff;line-height:1.45;overflow-wrap:anywhere}
+    h1{font-size:${small?16:19}px;text-align:center;margin:0}.num{font-size:${small?22:26}px;font-weight:bold;text-align:center;margin:4px 0}
     .c{text-align:center}hr{border:0;border-top:1px dashed #000;margin:6px 0}
     table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}.n{text-align:left;white-space:nowrap;padding-right:8px}
-    .tot td{font-size:16px;font-weight:bold;border-top:1px solid #000;padding-top:4px}
-    .nt{font-weight:bold}.onote{border:2px solid #000;padding:5px;font-size:15px;font-weight:bold;margin:6px 0}
+    .tot td{font-size:${small?14:16}px;font-weight:bold;border-top:2px solid #000;padding-top:4px}
+    .nt{font-weight:bold}.onote{border:2px solid #000;padding:5px;font-size:${small?13:15}px;font-weight:bold;margin:6px 0}
     </style></head><body><h1>${esc(SHOP.shop_name||"Melano Fast Food")}</h1><div class="num">${esc(o.num)}</div><div class="c">${esc(o.t)}</div><hr>
     <table>${rows}<tr><td>خواردن</td><td class="n">${nf(sub)}</td></tr><tr><td>گەیاندن</td><td class="n">${o.delivery_fee?nf(o.delivery_fee):"بێبەرامبەر"}</td></tr><tr class="tot"><td>کۆی گشتی</td><td class="n">${money(o.total)}</td></tr></table>${o.note?`<div class="onote">تێبینی: ${esc(o.note)}</div>`:""}<hr>
     <div><b>${esc(o.cust_name)}</b></div><div dir="ltr" style="text-align:right">${esc(o.cust_phone)}</div><div>${esc(o.address)}</div>
-    ${o.lat&&o.lng?`<div>📍 شوێنی GPS هەیە</div>`:""}<hr><div class="c">سوپاس بۆ داواکارییەکەت</div></body></html>`;
+    ${o.lat&&o.lng?`<div>شوێنی GPS هەیە</div>`:""}<hr><div class="c">سوپاس بۆ داواکارییەکەت</div></body></html>`;
 }
 function printOrder(o){ printQ.push(o); nextPrint(); }
 function nextPrint(){
   if(printing||!printQ.length) return; printing=true;
   const f=document.createElement("iframe");
-  f.style.cssText="position:fixed;left:-9999px;top:0;width:302px;height:800px;border:0";
+  f.style.cssText=`position:fixed;left:-9999px;top:0;width:${paper}mm;height:800px;border:0`;
   f.onload=()=>setTimeout(()=>{
-    try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){ toast("چاپ نەکرا.",true); }
-    setTimeout(()=>{ f.remove(); printing=false; nextPrint(); },2500);
+    try{
+      // درێژی کاغەز بەقەد پسوولەکەیە، بۆ ئەوەی کاغەزی زیادە نەڕوات
+      const d=f.contentDocument, h=Math.ceil(d.body.offsetHeight*25.4/96)+2;
+      d.getElementById("pg").textContent=`@page{size:${paper}mm ${h}mm;margin:0}`;
+      f.contentWindow.focus(); f.contentWindow.print();
+    }catch(e){ toast("چاپ نەکرا.",true); }
+    setTimeout(()=>{ f.remove(); printing=false; nextPrint(); },1500);
   },200);
   f.srcdoc=receiptHtml(printQ.shift());
   document.body.appendChild(f);
@@ -295,6 +305,9 @@ function autoPrintNew(){
   lastOrders.slice().reverse().forEach(o=>{ if((o.status==="pending"||o.status==="accepted")&&!s.has(o.num)){ s.add(o.num); printOrder(o); n++; } });
   if(n) savePrinted(s);
 }
+$("paper").value=paper;
+$("paper").onchange=()=>{ paper=+$("paper").value; try{ localStorage.setItem("mln_paper",paper); }catch(e){} };
+$("testPrint").onclick=()=>printOrder({num:"TEST",t:new Date().toLocaleString("en-GB"),items:[{n:"برگری تاقیکردنەوە",q:2,p:5000,note:"بێ پیاز"},{n:"کۆکا",q:1,p:1000}],delivery_fee:2000,total:13000,note:"تێبینی تاقیکردنەوە",cust_name:"ناوی کڕیار",cust_phone:"07500000000",address:"ناونیشانی تاقیکردنەوە",lat:1,lng:1});
 $("apOn").checked=autoPrint;
 $("apOn").onchange=()=>{
   autoPrint=$("apOn").checked;
@@ -306,7 +319,10 @@ $("apOn").onchange=()=>{
 // ===== داواکاری و ئامار =====
 async function loop(){
   let r; try{ r=await rpc("owner_data",{p_pin:pin}); }catch(e){ return; }
-  if(!r||!r.ok){ clearInterval(timer); $("login").hidden=false; $("app").hidden=true; return; }
+  if(!r) return;
+  // تەنها وەڵامی ok:false واتە تۆکن بەسەرچووە؛ هەڵەی کاتی نابێت خاوەن بباتە دەرەوە
+  if(r.ok===false){ clearInterval(timer); try{sessionStorage.removeItem("mln_own");}catch(e){} $("login").hidden=false; $("app").hidden=true; return; }
+  if(!r.ok) return;
   paint(r);
 }
 function paint(d){
@@ -324,7 +340,11 @@ function paint(d){
     <div class="stat rev"><span>کۆی داهات</span><b>${money(s.revenue)}</b></div>`;
   const board=(d.drivers||[]).slice().sort((a,b)=>(b.today||0)-(a.today||0)||(b.delivered||0)-(a.delivered||0));
   $("drvBoard").innerHTML=board.length?board.map(dr=>`<tr><td class="nw"><b>${esc(dr.name)}</b></td><td><b style="color:var(--brand);font-size:1.1rem">${nf(dr.today)}</b></td><td><b>${nf(dr.delivered)}</b></td><td class="nw">${money(dr.amount)}</td><td class="nw">${dr.active?`🛵 ${nf(dr.active)} لە ڕێگا`:`<span style="color:var(--muted)">بەتاڵە</span>`}</td></tr>`).join(""):`<tr><td colspan="5" class="empty">هێشتا گەیەنەر نییە.</td></tr>`;
-  $("drivers").innerHTML=(d.drivers||[]).length?d.drivers.map(dr=>`<div class="drv"><div><b>${esc(dr.name)}</b> <span style="color:var(--muted);font-size:.8rem">(PIN: ${esc(dr.pin)})</span><div class="cnt">✅ ${nf(dr.delivered)} گەیەنراو${dr.active?` · 🛵 ${nf(dr.active)} لە ڕێگا`:""}</div>${(dr.lat!=null&&dr.age!=null&&dr.age<900)?`<a href="https://maps.google.com/?q=${dr.lat},${dr.lng}" target="_blank" rel="noopener" style="color:var(--brand);font-weight:800;font-size:.85rem;text-decoration:none">📍 شوێنی ئێستا (${dr.age<60?dr.age+" چرکە":Math.round(dr.age/60)+" خولەک"} لەمەوبەر)</a>`:""}</div><button class="btn ghost sm red" data-ddrv="${esc(dr.id)}" data-n="${esc(dr.name)}">لابردن</button></div>`).join(""):`<div class="empty">هێشتا گەیەنەر نییە.</div>`;
+  $("drivers").innerHTML=(d.drivers||[]).length?d.drivers.map(dr=>`<div class="drv"><div><b>${esc(dr.name)}</b><div class="cnt">✅ ${nf(dr.delivered)} گەیەنراو${dr.active?` · 🛵 ${nf(dr.active)} لە ڕێگا`:""}</div>${(dr.lat!=null&&dr.age!=null&&dr.age<900)?`<a href="https://maps.google.com/?q=${dr.lat},${dr.lng}" target="_blank" rel="noopener" style="color:var(--brand);font-weight:800;font-size:.85rem;text-decoration:none">📍 شوێنی ئێستا (${dr.age<60?dr.age+" چرکە":Math.round(dr.age/60)+" خولەک"} لەمەوبەر)</a>`:""}</div><div style="display:flex;gap:6px"><button class="btn ghost sm" data-pdrv="${esc(dr.id)}" data-n="${esc(dr.name)}">گۆڕینی PIN</button><button class="btn ghost sm red" data-ddrv="${esc(dr.id)}" data-n="${esc(dr.name)}">لابردن</button></div></div>`).join(""):`<div class="empty">هێشتا گەیەنەر نییە.</div>`;
+  $("drivers").querySelectorAll("[data-pdrv]").forEach(b=>b.onclick=async()=>{
+    const p=(prompt(`PIN ـی نوێ بۆ "${b.dataset.n}" (لانیکەم ٦):`)||"").trim(); if(!p)return;
+    b.disabled=true; await act("owner_set_driver_pin",{p_id:b.dataset.pdrv,p_dpin:p},"PIN گۆڕدرا ✓"); b.disabled=false;
+  });
   $("drivers").querySelectorAll("[data-ddrv]").forEach(b=>b.onclick=async()=>{
     if(!confirm(`"${b.dataset.n}" لاببرێت؟ ئەو داواکارییانەی لە ڕێگان دەگەڕێنەوە بۆ چاوەڕوان.`))return;
     b.disabled=true; if(await act("owner_del_driver",{p_id:b.dataset.ddrv},"گەیەنەر لابرا ✓")) loop(); else b.disabled=false;
@@ -522,13 +542,13 @@ $("npShow").onchange=()=>["np0","np1","np2"].forEach(id=>$(id).type=$("npShow").
 $("savePin").onclick=async()=>{
   const c=$("np0").value.trim(), a=$("np1").value.trim(), b=$("np2").value.trim();
   if(!c){ toast("پاسوۆردی ئێستا بنووسە.",true); return; }
-  if(a.length<4){ toast(ERR.pin,true); return; }
+  if(a.length<8){ toast(ERR.pin,true); return; }
   if(a!==b){ toast("دوو پاسوۆردە نوێیەکە وەک یەک نین.",true); return; }
   $("savePin").disabled=true;
-  let r; try{ r=await rpc("owner_change_pin",{p_pin:c,p_new:a}); }catch(e){ r=null; }
+  let r; try{ r=await rpc("owner_change_pin",{p_pin:pin,p_old:c,p_new:a}); }catch(e){ r=null; }
   $("savePin").disabled=false;
-  if(r&&r.ok){ pin=a; try{ sessionStorage.setItem("mln_own",pin); }catch(e){} ["np0","np1","np2"].forEach(id=>$(id).value=""); toast("پاسوۆرد گۆڕدرا ✓"); }
-  else toast(r?(r.error?ERR[r.error]:"پاسوۆردی ئێستا هەڵەیە."):"ئینتەرنێت بپشکنە.",true);
+  if(r&&r.ok){ pin=r.token; try{ sessionStorage.setItem("mln_own",pin); }catch(e){} ["np0","np1","np2"].forEach(id=>$(id).value=""); toast("پاسوۆرد گۆڕدرا ✓"); }
+  else toast(ERR[r&&r.error]||"نەکرا، ئینتەرنێت بپشکنە.",true);
 };
 const base=location.href.split("?")[0].replace(/[^\/]*$/,"");
 $("lnkC").value=base; $("lnkD").value=base+"melano-driver.html";
