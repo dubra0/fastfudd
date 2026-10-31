@@ -1,0 +1,19 @@
+{
+  "id": "melano-driver.html",
+  "name": "Melano گەیەنەر",
+  "short_name": "گەیەنەر",
+  "description": "پانێڵی گەیەنەری Melano",
+  "lang": "ckb",
+  "dir": "rtl",
+  "start_url": "melano-driver.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f1512",
+  "theme_color": "#15a35a",
+  "icons": [
+    { "src": "icons/driver-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/driver-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/driver-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

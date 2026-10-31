@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <title>Melano · گەیەنەر</title>
+<link rel="manifest" href="manifest-driver.json">
+<meta name="theme-color" content="#15a35a">
+<link rel="apple-touch-icon" href="icons/driver-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="گەیەنەر">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@500;700;800;900&family=Outfit:wght@700;900&display=swap">
 <style>
@@ -271,6 +276,7 @@ async function refreshRoute(L,t){
   routeBusy=false;
 }
 document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && me.pin){ startGps(); try{ if(delivering && "wakeLock" in navigator) navigator.wakeLock.request("screen").then(w=>wake=w).catch(()=>{}); }catch(e){} loop(); } });
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 if(me.pin) enter();
 </script>
 </body>

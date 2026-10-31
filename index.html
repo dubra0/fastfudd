@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Melano Fast Food</title>
+<link rel="manifest" href="manifest-customer.json">
+<meta name="theme-color" content="#e23b2e">
+<link rel="apple-touch-icon" href="icons/customer-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Melano">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@500;700;800;900&family=Outfit:wght@700;900&display=swap">
 <style>
@@ -19,6 +24,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f);font-si
 .bnav .bd{position:absolute;top:4px;left:calc(50% - 26px);background:var(--brand);color:#fff;border-radius:99px;min-width:18px;padding:0 5px;font-size:.68rem;line-height:18px}
 body.orders .fab{display:none}
 .ohead{font-family:var(--fd);font-weight:900;font-size:1.25rem;padding:18px 16px 4px}
+.acct{margin:10px 16px 2px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 12px;display:flex;align-items:center;gap:10px}
+.acct.col{flex-direction:column;align-items:stretch;text-align:center}.acct small{color:var(--muted);font-size:.8rem;display:block;overflow:hidden;text-overflow:ellipsis}
+.acct img,.acct .av{width:42px;height:42px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--soft);font-size:20px}
+.acct .an{flex:1;min-width:0}.acct .btn{width:auto;padding:8px 12px;font-size:.82rem;margin:0}
+.gbtn{font:inherit;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#1f1f1f;border:1px solid #dadce0;border-radius:12px;padding:11px;cursor:pointer}
 .olist{padding:8px 16px;display:grid;gap:10px}
 .ocard{width:100%;text-align:start;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:13px;cursor:pointer;display:block}
 .ocard.live{border-color:var(--ok)}
@@ -121,7 +131,10 @@ body.orders .fab{display:none}
 <div class="wrap">
   <div id="viewOrders" hidden>
     <div class="ohead">📦 داواکارییەکانم</div>
+    <div id="acct"></div>
+    <div id="install"></div>
     <div class="olist" id="olist"></div>
+    <p class="hint" style="padding:6px 16px"><a href="privacy.html" style="color:var(--muted)">سیاسەتی تایبەتمەندی</a></p>
   </div>
   <div id="viewMenu">
   <header class="hero">
@@ -154,8 +167,50 @@ const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&
 const safeImg = u => /^https:\/\//i.test(u||"") ? u : "";
 const pic = it => safeImg(it.img) ? `<img src="${esc(it.img)}" alt="" loading="lazy">` : esc(it.e||"🍽️");
 const LS = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }, del(k){ try{ localStorage.removeItem(k); }catch(e){} } };
+// ===== چوونەژوورەوە بە Google (ئارەزوومەندانە) =====
+const BASE = SUPA.replace("/rest/v1/rpc/","");
+let session=null, googleOn=false, justLogged=false;
+function jwtData(t){ try{ const b=t.split(".")[1].replace(/-/g,"+").replace(/_/g,"/"); return JSON.parse(decodeURIComponent(escape(atob(b)))); }catch(e){ return null; } }
+function setSession(at,rt){
+  const d=jwtData(at); if(!d) return;
+  const m=d.user_metadata||{};
+  session={at,rt,exp:d.exp||0,name:m.full_name||m.name||"",email:d.email||"",pic:m.avatar_url||m.picture||""};
+  LS.set("mln_auth",JSON.stringify(session));
+}
+function signOut(){ session=null; LS.del("mln_auth"); paintAcct(); }
+(function initAuth(){
+  try{ session=JSON.parse(LS.get("mln_auth")||"null"); }catch(e){}
+  const h=new URLSearchParams(location.hash.slice(1));
+  if(h.get("access_token")){ setSession(h.get("access_token"),h.get("refresh_token")); justLogged=true; history.replaceState(null,"",location.pathname+location.search); }
+})();
+async function authToken(){
+  if(!session) return KEY;
+  if(session.exp-Date.now()/1000>60) return session.at;
+  try{
+    const r=await fetch(`${BASE}/auth/v1/token?grant_type=refresh_token`,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY},body:JSON.stringify({refresh_token:session.rt})});
+    if(r.ok){ const j=await r.json(); setSession(j.access_token,j.refresh_token); return session.at; }
+    if(r.status>=400&&r.status<500) signOut();
+  }catch(e){}
+  return KEY;
+}
+function googleLogin(){ location.href=`${BASE}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(location.href.split("#")[0].split("?")[0])}`; }
+function paintAcct(){
+  const el=$("acct"); if(!el) return;
+  if(session){
+    el.innerHTML=`<div class="acct">${safeImg(session.pic)?`<img src="${esc(session.pic)}" alt="" referrerpolicy="no-referrer">`:`<span class="av">👤</span>`}<div class="an"><b>${esc(session.name||"هەژمارەکەم")}</b><small>${esc(session.email)}</small></div><button class="btn ghost" id="outBtn">دەرچوون</button></div>`;
+    $("outBtn").onclick=()=>{ signOut(); loadOrders(); };
+  } else if(googleOn){
+    el.innerHTML=`<div class="acct col"><small>بچۆ ژوورەوە بۆ ئەوەی داواکارییەکانت لەسەر هەر مۆبایلێک ببینیت</small><button class="gbtn" id="gBtn"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.2C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.9 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.9c-.6 3-2.2 5.5-4.7 7.2l7.6 5.9c4.4-4.1 7.1-10.1 7.1-17.6z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.2C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.2 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.2C6.5 42.6 14.6 48 24 48z"/></svg>چوونەژوورەوە بە Google</button></div>`;
+    $("gBtn").onclick=googleLogin;
+  } else el.innerHTML="";
+}
+fetch(`${BASE}/auth/v1/settings`,{headers:{apikey:KEY}}).then(r=>r.json()).then(s=>{ googleOn=!!(s.external&&s.external.google); paintAcct(); }).catch(()=>{});
 async function rpc(fn, body){
-  const r = await fetch(SUPA+fn, { method:"POST", headers:{"Content-Type":"application/json", apikey:KEY, Authorization:"Bearer "+KEY}, body:JSON.stringify(body||{}) });
+  const send=t=>fetch(SUPA+fn, { method:"POST", headers:{"Content-Type":"application/json", apikey:KEY, Authorization:"Bearer "+t}, body:JSON.stringify(body||{}) });
+  const t=await authToken();
+  let r=await send(t);
+  // ئەگەر چوونەژوورەوە بەسەرچوو، داواکاری هەر دەڕوات
+  if(r.status===401&&t!==KEY){ signOut(); r=await send(KEY); }
   return r.json();
 }
 function bell(){ try{ const A=window.AudioContext||window.webkitAudioContext; if(!A)return; const c=new A(); [880,1174.66,1568].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+i*0.13;o.type="sine";o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.28,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.55);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+0.55);});}catch(e){} }
@@ -333,6 +388,7 @@ function renderCart(){
   const prev = $("oName") ? {name:$("oName").value, phone:$("oPhone").value, addr:$("oAddr").value, note:$("oNote").value} : null;
   let saved = prev; if(!saved){ try{ saved=JSON.parse(LS.get("mln_cust")||"null"); }catch(e){} }
   saved = saved || {name:"",phone:"",addr:""};
+  if(!saved.name&&session) saved.name=session.name;
   const open = isOpen();
   $("cartBody").innerHTML = ids.map(k=>{ const l=cart[k], it=findItem(l.id), u=unitPrice(it,l.size,l.ex), q=l.q; return `<div class="crow"><span class="e">${pic(it)}</span><div class="n"><b>${esc(lineLabel(l))}</b><small>${money(u)} × ${q}</small>${l.note?`<small class="lnote">📝 ${esc(l.note)}</small>`:""}</div><div class="qtyc"><button data-dec="${esc(k)}">−</button><b>${q}</b><button data-inc="${esc(k)}">+</button></div><span class="p">${money(u*q)}</span></div>`; }).join("")
     + `<div class="sum"><span>خواردن</span><span>${money(subTotal())}</span></div>
@@ -382,6 +438,14 @@ function endTrack(){ clearInterval(trackTimer); myNum=null; myTok=null; lastR=nu
 // ===== داواکارییەکانم: لەسەر مۆبایلی کڕیار هەڵدەگیرێن و نافەوتێن =====
 function myOrders(){ try{ const a=JSON.parse(LS.get("mln_orders")||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
 function saveOrder(num,tok){ const a=myOrders().filter(o=>o.num!==num); a.unshift({num,tok,at:Date.now()}); LS.set("mln_orders",JSON.stringify(a.slice(0,30))); }
+// داواکارییەکانی هەژماری Google لەگەڵ لیستی ئەم مۆبایلە تێکەڵ دەکرێن
+async function syncOrders(){
+  if(!session) return;
+  let r; try{ r=await rpc("my_orders"); }catch(e){ return; }
+  if(!Array.isArray(r)||!session) return;
+  const a=myOrders(); r.forEach(o=>{ if(!a.some(x=>x.num===o.num)) a.push(o); });
+  a.sort((x,y)=>y.at-x.at); LS.set("mln_orders",JSON.stringify(a.slice(0,30)));
+}
 function setView(v){
   const orders=v==="orders";
   $("viewMenu").hidden=orders; $("viewOrders").hidden=!orders;
@@ -394,6 +458,7 @@ const OST={pending:"🕐 چاوەڕوان",accepted:"🛵 لە ڕێگایە",del
 let ordersBusy=false, autoOpened=false;
 async function loadOrders(){
   if(ordersBusy) return; ordersBusy=true;
+  await syncOrders();
   const list=myOrders();
   const res=await Promise.all(list.map(o=>rpc("track_order",{p_num:o.num,p_token:o.tok}).catch(()=>null)));
   ordersBusy=false;
@@ -538,7 +603,25 @@ function startTrack(){
   LS.del("mln_order"); if(o&&o.num&&o.tok&&!myOrders().some(x=>x.num===o.num)) saveOrder(o.num,o.tok);
 })();
 
-loadMenu(); loadOrders();
+// ===== دامەزراندن وەک ئەپ =====
+let installEvt=null;
+const standalone=(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true;
+function paintInstall(){
+  const el=$("install");
+  if(standalone){ el.innerHTML=""; return; }
+  if(installEvt){
+    el.innerHTML=`<div class="acct col"><button class="gbtn" id="instBtn">📲 Melano وەک ئەپ دابمەزرێنە</button></div>`;
+    $("instBtn").onclick=async()=>{ installEvt.prompt(); await installEvt.userChoice; installEvt=null; paintInstall(); };
+  } else if(isIOS){
+    el.innerHTML=`<div class="acct col"><small>📲 بۆ دامەزراندن وەک ئەپ: لە Safari دوگمەی <b>Share</b> دابگرە، پاشان <b>Add to Home Screen</b></small></div>`;
+  }
+}
+window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); installEvt=e; paintInstall(); });
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+paintInstall();
+
+loadMenu(); loadOrders(); paintAcct();
+if(justLogged) setView("orders");
 setInterval(()=>loadMenu(true), 60000);
 setInterval(()=>{ if(!$("viewOrders").hidden) loadOrders(); }, 10000);
 </script>
