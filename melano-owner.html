@@ -79,6 +79,8 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
 .imgprev img{width:100%;height:100%;object-fit:cover}
 .imgbtns{display:grid;gap:7px;flex:1}.imgbtns .btn{text-align:center;position:relative;overflow:hidden}
 .imgbtns input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;padding:0;font-size:0}
+.orow{display:flex;gap:6px;align-items:center;margin-bottom:6px}.orow .pp{width:100px;flex:none;padding:9px;font-family:var(--fd)}.orow input{padding:9px}.orow button{flex:none}
+.note{color:var(--brand);font-size:.84rem;font-weight:700;display:block}
 .link{display:flex;gap:8px;align-items:center;margin-bottom:8px}.link input{direction:ltr;font-size:.82rem}
 </style>
 </head>
@@ -187,6 +189,8 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
     </div>
     <input type="hidden" id="imImg">
   </div>
+  <div class="fld"><span class="fl">قەبارەکان (ئارەزوومەندانە) · نرخی تەواوی هەر قەبارەیەک</span><div id="imSizes"></div><button type="button" class="btn ghost sm" id="imAddSize">+ قەبارە</button></div>
+  <div class="fld"><span class="fl">زیادەکان (ئارەزوومەندانە) · نرخی زیادە</span><div id="imExtras"></div><button type="button" class="btn ghost sm" id="imAddExtra">+ زیادە</button></div>
   <label style="display:flex;gap:10px;align-items:center;font-weight:700"><span class="sw"><input type="checkbox" id="imAvail"><i></i></span> بەردەستە</label>
   <div class="row"><button class="btn" id="imSave" style="flex:1">پاشەکەوتکردن</button><button class="btn ghost" id="imCancel">پاشگەزبوونەوە</button></div>
 </div></div>
@@ -258,7 +262,7 @@ try{ autoPrint=localStorage.getItem("mln_autoprint")==="1"; }catch(e){}
 function printedSet(){ try{ return new Set(JSON.parse(localStorage.getItem("mln_printed")||"[]")); }catch(e){ return new Set(); } }
 function savePrinted(s){ try{ localStorage.setItem("mln_printed",JSON.stringify([...s].slice(-300))); }catch(e){} }
 function receiptHtml(o){
-  const rows=(o.items||[]).map(x=>`<tr><td>${esc(x.n)} × ${x.q}</td><td class="n">${nf(x.p*x.q)}</td></tr>`).join("");
+  const rows=(o.items||[]).map(x=>`<tr><td>${esc(x.n)} × ${x.q}${x.note?`<div class="nt">* ${esc(x.note)}</div>`:""}</td><td class="n">${nf(x.p*x.q)}</td></tr>`).join("");
   const sub=(o.total||0)-(o.delivery_fee||0);
   return `<!doctype html><html lang="ckb" dir="rtl"><head><meta charset="utf-8"><style>
     @page{margin:5mm}*{box-sizing:border-box}
@@ -267,8 +271,9 @@ function receiptHtml(o){
     .c{text-align:center}hr{border:0;border-top:1px dashed #000;margin:6px 0}
     table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}.n{text-align:left;white-space:nowrap;padding-right:8px}
     .tot td{font-size:16px;font-weight:bold;border-top:1px solid #000;padding-top:4px}
+    .nt{font-weight:bold}.onote{border:2px solid #000;padding:5px;font-size:15px;font-weight:bold;margin:6px 0}
     </style></head><body><h1>${esc(SHOP.shop_name||"Melano Fast Food")}</h1><div class="num">${esc(o.num)}</div><div class="c">${esc(o.t)}</div><hr>
-    <table>${rows}<tr><td>خواردن</td><td class="n">${nf(sub)}</td></tr><tr><td>گەیاندن</td><td class="n">${o.delivery_fee?nf(o.delivery_fee):"بێبەرامبەر"}</td></tr><tr class="tot"><td>کۆی گشتی</td><td class="n">${money(o.total)}</td></tr></table><hr>
+    <table>${rows}<tr><td>خواردن</td><td class="n">${nf(sub)}</td></tr><tr><td>گەیاندن</td><td class="n">${o.delivery_fee?nf(o.delivery_fee):"بێبەرامبەر"}</td></tr><tr class="tot"><td>کۆی گشتی</td><td class="n">${money(o.total)}</td></tr></table>${o.note?`<div class="onote">تێبینی: ${esc(o.note)}</div>`:""}<hr>
     <div><b>${esc(o.cust_name)}</b></div><div dir="ltr" style="text-align:right">${esc(o.cust_phone)}</div><div>${esc(o.address)}</div>
     ${o.lat&&o.lng?`<div>📍 شوێنی GPS هەیە</div>`:""}<hr><div class="c">سوپاس بۆ داواکارییەکەت</div></body></html>`;
 }
@@ -325,7 +330,7 @@ function paint(d){
     b.disabled=true; if(await act("owner_del_driver",{p_id:b.dataset.ddrv},"گەیەنەر لابرا ✓")) loop(); else b.disabled=false;
   });
   $("orders").innerHTML=(d.orders||[]).length?d.orders.map(o=>{
-    const items=(o.items||[]).map(x=>`${esc(x.n)} × ${x.q}`).join("<br>");
+    const items=(o.items||[]).map(x=>`${esc(x.n)} × ${x.q}${x.note?`<span class="note">📝 ${esc(x.note)}</span>`:""}`).join("<br>")+(o.note?`<span class="note">📝 ${esc(o.note)}</span>`:"");
     const map=(o.lat&&o.lng)?`<br><a href="https://maps.google.com/?q=${o.lat},${o.lng}" target="_blank" rel="noopener">🗺️ نەخشە</a>`:"";
     const can=`<button class="btn ghost sm" data-print="${esc(o.num)}" aria-label="چاپ">🖨️</button>`+((o.status==="pending"||o.status==="accepted")?` <button class="btn ghost sm red" data-cancel="${esc(o.num)}">هەڵوەشاندنەوە</button>`:"");
     return `<tr><td class="nw"><b>${esc(o.num)}</b></td><td class="nw" style="color:var(--muted)">${esc(o.t)}</td><td class="nw">${esc(o.cust_name)}<small dir="ltr">${esc(o.cust_phone)}</small></td><td style="min-width:130px">${items}</td><td style="min-width:150px;max-width:240px">${esc(o.address)}${map}</td><td><span class="pill ${esc(o.status)}">${ST[o.status]||esc(o.status)}</span></td><td class="nw">${esc(o.driver_name||"—")}</td><td class="nw"><b>${money(o.total)}</b>${o.delivery_fee?`<small>گەیاندن: ${money(o.delivery_fee)}</small>`:""}</td><td>${can}</td></tr>`;
@@ -345,7 +350,7 @@ async function loadMenu(){
   MENU=r.cats||[]; SHOP=r.shop||{}; paintMenu(); paintSettings();
 }
 const findIt = id => { for(const c of MENU) for(const it of c.items) if(String(it.id)===String(id)) return Object.assign({cat:c.id}, it); return null; };
-const saveItem = (it, okMsg) => act("owner_save_item",{p_id:it.id||null,p_cat:+it.cat,p_name:it.n,p_desc:it.d||"",p_price:+it.p,p_emoji:it.e||"🍽️",p_img:it.img||"",p_avail:!!it.a}, okMsg);
+const saveItem = (it, okMsg) => act("owner_save_item",{p_id:it.id||null,p_cat:+it.cat,p_name:it.n,p_desc:it.d||"",p_price:+it.p,p_emoji:it.e||"🍽️",p_img:it.img||"",p_avail:!!it.a,p_options:it.o||null}, okMsg);
 
 function paintMenu(){
   $("menuList").innerHTML = MENU.length ? MENU.map(c=>`<div class="card">
@@ -411,9 +416,32 @@ function openItem(it, catId){
   $("imEmoji").value = it ? it.e : ((MENU.find(c=>c.id===catId)||{}).icon || "🍽️");
   $("imImg").value = it ? it.img : "";
   $("imFile").value = ""; paintPrev();
+  const o=(it&&it.o)||{};
+  $("imSizes").innerHTML=""; $("imExtras").innerHTML="";
+  (o.sizes||[]).forEach(x=>optRow("imSizes",x.n,x.p)); (o.extras||[]).forEach(x=>optRow("imExtras",x.n,x.p));
   $("imAvail").checked = it ? !!it.a : true;
   $("itemOv").classList.add("on"); setTimeout(()=>$("imName").focus(),50);
 }
+// قەبارە و زیادەکانی هەر خواردنێک
+function optRow(box,n,p){
+  const r=document.createElement("div"); r.className="orow";
+  r.innerHTML=`<input class="nn" placeholder="${box==="imSizes"?"بۆ نموونە: گەورە":"بۆ نموونە: پەنیر"}" value="${esc(n||"")}"><input class="pp" type="number" inputmode="numeric" min="0" step="250" placeholder="نرخ" value="${p==null?"":p}"><button type="button" class="btn ghost sm red">✕</button>`;
+  r.querySelector("button").onclick=()=>r.remove();
+  $(box).appendChild(r);
+}
+function readOpts(box){
+  const out=[]; let bad=false;
+  $(box).querySelectorAll(".orow").forEach(r=>{
+    const n=r.querySelector(".nn").value.trim().replace(/[,|]/g," "), p=parseInt(r.querySelector(".pp").value,10);
+    if(!n&&isNaN(p)) return;
+    if(!n||isNaN(p)||p<0){ bad=true; return; }
+    if(!out.some(x=>x.n===n)) out.push({n:n.slice(0,40),p});
+  });
+  return bad?null:out;
+}
+$("imAddSize").onclick=()=>optRow("imSizes");
+$("imAddExtra").onclick=()=>optRow("imExtras");
+
 // وێنە بچووک دەکرێتەوە و بە پسوولەی کاتی بار دەکرێت
 const STORE = SUPA.replace("/rest/v1/rpc/","/storage/v1");
 function paintPrev(){
@@ -453,8 +481,10 @@ $("imSave").onclick=async()=>{
   const img=$("imImg").value.trim();
   const p=parseInt($("imPrice").value,10);
   if(isNaN(p)||p<0){ toast(ERR.price,true); return; }
+  const sizes=readOpts("imSizes"), extras=readOpts("imExtras");
+  if(!sizes||!extras){ toast("بۆ هەر قەبارە و زیادەیەک ناو و نرخ بنووسە.",true); return; }
   $("imSave").disabled=true;
-  const ok=await saveItem({id:editItem,cat:$("imCat").value,n:$("imName").value.trim(),d:$("imDesc").value.trim(),p:p,e:$("imEmoji").value.trim(),img:img,a:$("imAvail").checked}, editItem?"پاشەکەوت کرا ✓":"خواردن زیاد کرا ✓");
+  const ok=await saveItem({id:editItem,cat:$("imCat").value,n:$("imName").value.trim(),d:$("imDesc").value.trim(),p:p,e:$("imEmoji").value.trim(),img:img,a:$("imAvail").checked,o:{sizes,extras}}, editItem?"پاشەکەوت کرا ✓":"خواردن زیاد کرا ✓");
   $("imSave").disabled=false;
   if(ok){ $("itemOv").classList.remove("on"); loadMenu(); }
 };

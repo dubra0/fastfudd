@@ -113,7 +113,7 @@ async function loop(){
   lastPending=pend; started=true;
   $("list").innerHTML = orders.length ? orders.map(o=>{
     const mine=o.status==="accepted";
-    const items=(o.items||[]).map(x=>`${esc(x.n)} × ${x.q}`).join("، ");
+    const items=(o.items||[]).map(x=>`${esc(x.n)} × ${x.q}${x.note?` <span class="dist">📝 ${esc(x.note)}</span>`:""}`).join("<br>")+(o.note?`<div class="dist">📝 ${esc(o.note)}</div>`:"");
     const map=(o.lat&&o.lng)?`<a class="map" href="https://maps.google.com/?q=${o.lat},${o.lng}" target="_blank" rel="noopener">🗺️ شوێنی کڕیار لەسەر نەخشە</a>`:"";
     return `<div class="card ${mine?'acc':''}">
       <div class="chd"><span>${esc(o.num)} · ${o.t||""}</span><span class="badge ${mine?'mine':'new'}">${mine?'من دەیبەم':'نوێ 🔔'}</span></div>

@@ -68,6 +68,15 @@ body.orders .fab{display:none}
 .sum{display:flex;justify-content:space-between;color:var(--muted);margin:10px 2px 0;font-size:.92rem}
 .total{display:flex;justify-content:space-between;font-family:var(--fd);font-weight:900;font-size:1.2rem;margin:6px 2px 14px}
 .field{display:grid;gap:5px;margin-bottom:10px}.field label{font-size:.85rem;color:var(--muted);font-weight:700}
+.item{cursor:pointer}
+.addw{display:flex;align-items:center;gap:6px;flex:none}.cnt{background:var(--soft);color:var(--brand);font-weight:900;border-radius:9px;padding:2px 9px}
+.ohero{height:170px;border-radius:14px;overflow:hidden;background:var(--soft);margin-bottom:8px}.ohero img{width:100%;height:100%;object-fit:cover}
+.desc2{color:var(--muted);font-size:.88rem;margin:0 0 6px}
+.ogrp{font-weight:900;margin:12px 0 6px}
+.orow{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:7px;cursor:pointer}
+.orow input{width:20px;height:20px;accent-color:var(--brand);margin:0;flex:none}.orow span{flex:1}.orow b{font-family:var(--fd);color:var(--brand);white-space:nowrap}
+.ofootr{display:flex;gap:10px;align-items:center;margin-top:4px}.ofootr .btn{flex:1;padding:13px}
+.lnote{color:var(--brand)!important}
 .field input,.field textarea{font:inherit;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink)}
 .field textarea{min-height:60px;resize:vertical}
 .btn{width:100%;border:0;border-radius:14px;padding:15px;font:inherit;font-weight:900;font-size:1.05rem;cursor:pointer}
@@ -130,6 +139,7 @@ body.orders .fab{display:none}
 </nav>
 <button class="fab" id="fab" hidden><span class="c" id="fabCount">0</span><span>سەبەتە</span><span id="fabTotal">0</span></button>
 <button class="chip" id="chip" hidden></button>
+<div class="overlay" id="optOv"><div class="sheet"><div class="sheet-h"><b id="optTitle"></b><button class="x" id="optX">✕</button></div><div id="optBody"></div></div></div>
 <div class="overlay" id="cartOv"><div class="sheet"><div class="sheet-h"><b>🛒 سەبەتەکەت</b><button class="x" id="cartX">✕</button></div><div id="cartBody"></div></div></div>
 <div class="overlay" id="okOv"><div class="sheet"><div class="sheet-h"><b>داواکارییەکەت</b><button class="x" id="okX">✕</button></div><div id="okBody"></div></div></div>
 
@@ -155,8 +165,17 @@ const allItems = () => MENU.flatMap(s=>s.items);
 const findItem = id => allItems().find(x=>String(x.id)===String(id));
 const fee = () => Math.max(0, parseInt(SHOP.delivery_fee,10) || 0);
 const isOpen = () => SHOP.is_open !== "0";
-const cartCount = () => Object.values(cart).reduce((a,b)=>a+b,0);
-const subTotal = () => Object.entries(cart).reduce((s,[id,q])=>{ const it=findItem(id); return s+(it?it.p*q:0); },0);
+// هەر هێڵێکی سەبەتە: {id, q, size, ex, note}
+const sizesOf = it => (it.o&&it.o.sizes)||[];
+const extrasOf = it => (it.o&&it.o.extras)||[];
+const hasOpts = it => sizesOf(it).length>0||extrasOf(it).length>0;
+const lineKey = (id,size,ex,note) => [id,size||"",(ex||[]).join(","),note||""].join("|");
+function unitPrice(it,size,ex){ let p=it.p; const s=sizesOf(it).find(x=>x.n===size); if(s) p=s.p; (ex||[]).forEach(n=>{ const e=extrasOf(it).find(x=>x.n===n); if(e) p+=e.p; }); return p; }
+function lineOk(l){ const it=findItem(l.id); if(!it) return false; if(sizesOf(it).length&&!sizesOf(it).some(x=>x.n===l.size)) return false; return (l.ex||[]).every(n=>extrasOf(it).some(x=>x.n===n)); }
+function addLine(id,size,ex,note,q){ const k=lineKey(id,size,ex,note); if(cart[k]) cart[k].q=Math.min(cart[k].q+(q||1),50); else cart[k]={id,q:q||1,size:size||"",ex:ex||[],note:note||""}; update(); }
+const lineLabel = l => { const it=findItem(l.id); return it.n+(l.size?` (${l.size})`:"")+(l.ex.length?" + "+l.ex.join(" + "):""); };
+const cartCount = () => Object.values(cart).reduce((a,l)=>a+l.q,0);
+const subTotal = () => Object.values(cart).reduce((s,l)=>{ const it=findItem(l.id); return s+(it?unitPrice(it,l.size,l.ex)*l.q:0); },0);
 const cartTotal = () => subTotal() + (cartCount() ? fee() : 0);
 
 async function loadMenu(silent){
@@ -168,7 +187,7 @@ async function loadMenu(silent){
   loaded = true;
   SHOP = r.shop || {};
   MENU = (r.cats||[]).filter(c=>c.items && c.items.length);
-  Object.keys(cart).forEach(id=>{ if(!findItem(id)) delete cart[id]; });
+  Object.keys(cart).forEach(k=>{ if(!lineOk(cart[k])) delete cart[k]; });
   if(activeCat!=="all" && !MENU.some(c=>String(c.id)===activeCat)) activeCat="all";
   paintHero(); paintCats(); update();
 }
@@ -192,15 +211,20 @@ function renderMenu(){
   if(!MENU.length){ $("menu").innerHTML=`<div class="empty">مینیو هێشتا ئامادە نییە.</div>`; return; }
   const secs = activeCat==="all" ? MENU : MENU.filter(s=>String(s.id)===activeCat);
   $("menu").innerHTML = secs.map(s=>`<div class="sec-h">${esc(s.icon)} ${esc(s.name)}</div>`+s.items.map(it=>{
-    const q=cart[it.id]||0;
-    const ctrl=q>0?`<div class="qtyc"><button data-dec="${it.id}" aria-label="کەمکردن">−</button><b>${q}</b><button data-inc="${it.id}" aria-label="زیادکردن">+</button></div>`:`<button class="add" data-inc="${it.id}" aria-label="زیادکردن">+</button>`;
-    return `<div class="item"><div class="pic">${pic(it)}</div><div class="info2"><h3>${esc(it.n)}</h3><p class="desc">${esc(it.d)}</p><div class="price">${money(it.p)}</div></div>${ctrl}</div>`;
+    const k=lineKey(it.id), l=cart[k], sizes=sizesOf(it);
+    const total=Object.values(cart).filter(x=>x.id===it.id).reduce((a,x)=>a+x.q,0);
+    const ctrl=(!hasOpts(it)&&l)?`<div class="qtyc"><button data-dec="${esc(k)}" aria-label="کەمکردن">−</button><b>${l.q}</b><button data-inc="${esc(k)}" aria-label="زیادکردن">+</button></div>`
+      :`<div class="addw">${total?`<span class="cnt">${total}</span>`:""}<button class="add" ${hasOpts(it)?`data-open="${it.id}"`:`data-add="${it.id}"`} aria-label="زیادکردن">+</button></div>`;
+    const price=sizes.length?`لە ${money(Math.min.apply(null,sizes.map(x=>x.p)))}`:money(it.p);
+    return `<div class="item" data-open="${it.id}"><div class="pic">${pic(it)}</div><div class="info2"><h3>${esc(it.n)}</h3><p class="desc">${esc(it.d)}</p><div class="price">${price}</div></div>${ctrl}</div>`;
   }).join("")).join("");
   wireQty($("menu"));
+  $("menu").querySelectorAll("[data-add]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); addLine(+b.dataset.add); });
+  $("menu").querySelectorAll("[data-open]").forEach(b=>b.onclick=e=>{ if(e.target.closest("[data-dec],[data-inc]")) return; e.stopPropagation(); openOpt(+b.dataset.open); });
 }
 function wireQty(root){
-  root.querySelectorAll("[data-inc]").forEach(b=>b.onclick=()=>{ const id=b.dataset.inc; cart[id]=Math.min((cart[id]||0)+1,50); update(); });
-  root.querySelectorAll("[data-dec]").forEach(b=>b.onclick=()=>{ const id=b.dataset.dec; cart[id]--; if(cart[id]<=0) delete cart[id]; update(); });
+  root.querySelectorAll("[data-inc]").forEach(b=>b.onclick=()=>{ const l=cart[b.dataset.inc]; if(l){ l.q=Math.min(l.q+1,50); update(); } });
+  root.querySelectorAll("[data-dec]").forEach(b=>b.onclick=()=>{ const k=b.dataset.dec, l=cart[k]; if(!l) return; l.q--; if(l.q<=0) delete cart[k]; update(); });
 }
 function update(){
   renderMenu();
@@ -209,6 +233,33 @@ function update(){
   $("fabTotal").textContent = money(cartTotal());
   if($("cartOv").classList.contains("on")) renderCart();
 }
+// ===== هەڵبژاردنی قەبارە، زیادە و تێبینی =====
+let optS=null;
+function openOpt(id){
+  const it=findItem(id); if(!it) return;
+  const s=sizesOf(it);
+  optS={id, size:s.length?s[0].n:"", ex:[], note:"", q:1};
+  renderOpt(); $("optOv").classList.add("on");
+}
+function renderOpt(){
+  const it=findItem(optS.id); if(!it){ $("optOv").classList.remove("on"); return; }
+  const s=sizesOf(it), x=extrasOf(it), unit=unitPrice(it,optS.size,optS.ex);
+  $("optTitle").textContent=it.n;
+  $("optBody").innerHTML=`${safeImg(it.img)?`<div class="ohero">${pic(it)}</div>`:""}${it.d?`<p class="desc2">${esc(it.d)}</p>`:""}
+    ${s.length?`<div class="ogrp">قەبارە</div>`+s.map(o=>`<label class="orow"><input type="radio" name="osz" data-size="${esc(o.n)}" ${o.n===optS.size?"checked":""}><span>${esc(o.n)}</span><b>${money(o.p)}</b></label>`).join(""):""}
+    ${x.length?`<div class="ogrp">زیادە</div>`+x.map(o=>`<label class="orow"><input type="checkbox" data-ex="${esc(o.n)}" ${optS.ex.indexOf(o.n)>=0?"checked":""}><span>${esc(o.n)}</span><b>+ ${money(o.p)}</b></label>`).join(""):""}
+    <div class="field" style="margin-top:12px"><label>تێبینی بۆ ئەم خواردنە (ئارەزوومەندانە)</label><input id="optNote" maxlength="120" placeholder="بۆ نموونە: بێ پیاز، سۆسی زیاتر" value="${esc(optS.note)}"></div>
+    <div class="ofootr"><div class="qtyc"><button id="optDec">−</button><b>${optS.q}</b><button id="optInc">+</button></div>
+    <button class="btn go" id="optAdd">زیادکردن · ${money(unit*optS.q)}</button></div>`;
+  const keep=()=>{ optS.note=$("optNote").value; };
+  $("optBody").querySelectorAll("[data-size]").forEach(i=>i.onchange=()=>{ keep(); optS.size=i.dataset.size; renderOpt(); });
+  $("optBody").querySelectorAll("[data-ex]").forEach(i=>i.onchange=()=>{ keep(); const n=i.dataset.ex; optS.ex=i.checked?extrasOf(it).map(e=>e.n).filter(v=>v===n||optS.ex.indexOf(v)>=0):optS.ex.filter(v=>v!==n); renderOpt(); });
+  $("optDec").onclick=()=>{ keep(); if(optS.q>1){ optS.q--; renderOpt(); } };
+  $("optInc").onclick=()=>{ keep(); if(optS.q<50){ optS.q++; renderOpt(); } };
+  $("optAdd").onclick=()=>{ addLine(optS.id,optS.size,optS.ex,$("optNote").value.trim(),optS.q); $("optOv").classList.remove("on"); };
+}
+$("optX").onclick=()=>$("optOv").classList.remove("on");
+$("optOv").onclick=e=>{ if(e.target.id==="optOv") $("optOv").classList.remove("on"); };
 $("fab").onclick=()=>{ renderCart(); $("cartOv").classList.add("on"); };
 $("cartX").onclick=()=>$("cartOv").classList.remove("on");
 $("cartOv").onclick=e=>{ if(e.target.id==="cartOv") $("cartOv").classList.remove("on"); };
@@ -279,14 +330,15 @@ function renderCart(){
   const ids=Object.keys(cart);
   if(!ids.length){ $("cartBody").innerHTML=`<div class="empty">سەبەتەکەت بەتاڵە 🛒</div>`; return; }
   // پاراستنی ئەوەی کڕیار نووسیویەتی کاتێک سەبەتە دووبارە دەکێشرێتەوە
-  const prev = $("oName") ? {name:$("oName").value, phone:$("oPhone").value, addr:$("oAddr").value} : null;
+  const prev = $("oName") ? {name:$("oName").value, phone:$("oPhone").value, addr:$("oAddr").value, note:$("oNote").value} : null;
   let saved = prev; if(!saved){ try{ saved=JSON.parse(LS.get("mln_cust")||"null"); }catch(e){} }
   saved = saved || {name:"",phone:"",addr:""};
   const open = isOpen();
-  $("cartBody").innerHTML = ids.map(id=>{ const it=findItem(id), q=cart[id]; return `<div class="crow"><span class="e">${pic(it)}</span><div class="n"><b>${esc(it.n)}</b><small>${money(it.p)} × ${q}</small></div><div class="qtyc"><button data-dec="${id}">−</button><b>${q}</b><button data-inc="${id}">+</button></div><span class="p">${money(it.p*q)}</span></div>`; }).join("")
+  $("cartBody").innerHTML = ids.map(k=>{ const l=cart[k], it=findItem(l.id), u=unitPrice(it,l.size,l.ex), q=l.q; return `<div class="crow"><span class="e">${pic(it)}</span><div class="n"><b>${esc(lineLabel(l))}</b><small>${money(u)} × ${q}</small>${l.note?`<small class="lnote">📝 ${esc(l.note)}</small>`:""}</div><div class="qtyc"><button data-dec="${esc(k)}">−</button><b>${q}</b><button data-inc="${esc(k)}">+</button></div><span class="p">${money(u*q)}</span></div>`; }).join("")
     + `<div class="sum"><span>خواردن</span><span>${money(subTotal())}</span></div>
        <div class="sum"><span>گەیاندن</span><span>${fee()?money(fee()):"بێبەرامبەر 🎁"}</span></div>
        <div class="total"><span>کۆی گشتی</span><span>${money(cartTotal())}</span></div>
+       <div class="field"><label>📝 تێبینی بۆ چێشتخانە (ئارەزوومەندانە)</label><textarea id="oNote" maxlength="300" placeholder="هەر داواکارییەکی تایبەتت هەیە لێرە بنووسە...">${esc(saved.note||"")}</textarea></div>
        <div class="field"><label>ناوت</label><input id="oName" autocomplete="name" placeholder="ناوی تەواو" value="${esc(saved.name)}"></div>
        <div class="field"><label>ژمارەی مۆبایل</label><input id="oPhone" inputmode="tel" autocomplete="tel" placeholder="0750 123 4567" value="${esc(saved.phone)}"></div>
        <div class="field"><label>ناونیشانی گەیاندن</label><textarea id="oAddr" placeholder="گەڕەک، کۆڵان، نیشانەی ماڵ...">${esc(saved.addr)}</textarea></div>
@@ -307,8 +359,8 @@ async function placeOrder(){
   if(phone.replace(/\D/g,"").length<7){ alert("ژمارەی مۆبایل دروست نییە."); return; }
   LS.set("mln_cust", JSON.stringify({name,phone,addr}));
   const btn=$("placeBtn"); btn.disabled=true; btn.textContent="چاوەڕێ بکە…";
-  const items=Object.keys(cart).map(id=>({id:+id, q:cart[id]}));
-  let res; try{ res=await rpc("place_order",{p_items:items,p_name:name,p_phone:phone,p_addr:addr,p_lat:geo?geo.lat:null,p_lng:geo?geo.lng:null}); }catch(e){ res=null; }
+  const items=Object.values(cart).map(l=>({id:l.id, q:l.q, size:l.size||null, extras:l.ex, note:l.note}));
+  let res; try{ res=await rpc("place_order",{p_items:items,p_name:name,p_phone:phone,p_addr:addr,p_lat:geo?geo.lat:null,p_lng:geo?geo.lng:null,p_note:$("oNote").value.trim()||null}); }catch(e){ res=null; }
   if(!res||!res.ok){
     const err = res && res.error;
     alert({closed:"ببورە، ئێستا داخراوین.",unavailable:"هەندێک لە خواردنەکان ئێستا نەماون. مینیو نوێ کرایەوە، تکایە سەبەتەکەت بپشکنە.",fields:"تکایە ناو، ژمارە و ناونیشان بنووسە."}[err] || "نەنێردرا. ئینتەرنێت بپشکنە و دووبارە هەوڵ بدەرەوە.");
@@ -457,9 +509,10 @@ function paintProg(r,came){
 function paintRcpt(r){
   if(rcptDone||!r.items) return; const el=$("rcpt"); if(!el) return; rcptDone=true;
   el.innerHTML=`<div class="receipt"><div class="rh"><b>${esc(SHOP.shop_name||"Melano Fast Food")}</b><div style="font-size:.8rem;color:var(--muted)">داواکاری ${esc(r.num)}</div></div>
-    ${r.items.map(x=>`<div class="rr"><span>${esc(x.n)} × ${x.q}</span><span>${money(x.p*x.q)}</span></div>`).join("")}
+    ${r.items.map(x=>`<div class="rr"><span>${esc(x.n)} × ${x.q}</span><span>${money(x.p*x.q)}</span></div>${x.note?`<div class="rr sub"><span>📝 ${esc(x.note)}</span></div>`:""}`).join("")}
     <div class="rr sub"><span>گەیاندن</span><span>${r.fee?money(r.fee):"بێبەرامبەر"}</span></div>
-    <div class="rr rt"><span>کۆی گشتی</span><span>${money(r.total)}</span></div></div>`;
+    <div class="rr rt"><span>کۆی گشتی</span><span>${money(r.total)}</span></div>
+    ${r.note?`<div class="rr sub" style="margin-top:8px"><span>📝 تێبینی: ${esc(r.note)}</span></div>`:""}</div>`;
 }
 function startTrack(){
   clearInterval(trackTimer); resetTrack(); syncChip();
