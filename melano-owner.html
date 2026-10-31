@@ -74,6 +74,11 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
 .emo{display:flex;flex-wrap:wrap;gap:4px}.emo button{font-size:20px;background:var(--soft);border:1px solid var(--line);border-radius:9px;width:36px;height:36px;cursor:pointer}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(120px);background:var(--ok);color:#04210f;font-weight:800;padding:11px 18px;border-radius:12px;z-index:80;transition:.25s;max-width:90vw;text-align:center}
 .toast.on{transform:translateX(-50%) translateY(0)}.toast.bad{background:var(--bad);color:#fff}
+.imgbox{display:flex;gap:12px;align-items:center}
+.imgprev{width:92px;height:92px;border-radius:14px;background:var(--soft);display:grid;place-items:center;font-size:38px;overflow:hidden;flex:none;border:1px solid var(--line)}
+.imgprev img{width:100%;height:100%;object-fit:cover}
+.imgbtns{display:grid;gap:7px;flex:1}.imgbtns .btn{text-align:center;position:relative;overflow:hidden}
+.imgbtns input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;padding:0;font-size:0}
 .link{display:flex;gap:8px;align-items:center;margin-bottom:8px}.link input{direction:ltr;font-size:.82rem}
 </style>
 </head>
@@ -171,7 +176,16 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
   <div class="fld"><span class="fl">وەسف</span><input id="imDesc" placeholder="بۆ نموونە: لەگەڵ پەنیر و سۆس"></div>
   <div class="fld"><span class="fl">نرخ (د.ع)</span><input id="imPrice" type="number" inputmode="numeric" min="0" step="250"></div>
   <div class="fld"><span class="fl">ئایکۆن</span><input id="imEmoji"><div class="emo" id="emoPick"></div></div>
-  <div class="fld"><span class="fl">لینکی وێنە (ئارەزوومەندانە · https://...)</span><input id="imImg" dir="ltr" placeholder="https://"></div>
+  <div class="fld"><span class="fl">وێنەی خواردن</span>
+    <div class="imgbox">
+      <div class="imgprev" id="imPrev"></div>
+      <div class="imgbtns">
+        <label class="btn ghost sm"><span id="imPickTxt">📷 هەڵبژاردنی وێنە</span><input type="file" id="imFile" accept="image/*"></label>
+        <button type="button" class="btn ghost sm red" id="imRemove">لابردنی وێنە</button>
+      </div>
+    </div>
+    <input type="hidden" id="imImg">
+  </div>
   <label style="display:flex;gap:10px;align-items:center;font-weight:700"><span class="sw"><input type="checkbox" id="imAvail"><i></i></span> بەردەستە</label>
   <div class="row"><button class="btn" id="imSave" style="flex:1">پاشەکەوتکردن</button><button class="btn ghost" id="imCancel">پاشگەزبوونەوە</button></div>
 </div></div>
@@ -336,7 +350,7 @@ $("ecSave").onclick=async()=>{
 $("ecCancel").onclick=()=>$("catOv").classList.remove("on");
 
 $("emoPick").innerHTML=EMOJIS.map(e=>`<button type="button">${e}</button>`).join("");
-$("emoPick").querySelectorAll("button").forEach(b=>b.onclick=()=>$("imEmoji").value=b.textContent);
+$("emoPick").querySelectorAll("button").forEach(b=>b.onclick=()=>{ $("imEmoji").value=b.textContent; paintPrev(); });
 function openItem(it, catId){
   editItem = it ? it.id : null;
   $("imTitle").textContent = it ? "دەستکاری خواردن" : "خواردنی نوێ";
@@ -347,12 +361,47 @@ function openItem(it, catId){
   $("imPrice").value = it ? it.p : "";
   $("imEmoji").value = it ? it.e : ((MENU.find(c=>c.id===catId)||{}).icon || "🍽️");
   $("imImg").value = it ? it.img : "";
+  $("imFile").value = ""; paintPrev();
   $("imAvail").checked = it ? !!it.a : true;
   $("itemOv").classList.add("on"); setTimeout(()=>$("imName").focus(),50);
 }
+// وێنە بچووک دەکرێتەوە و بە پسوولەی کاتی بار دەکرێت
+const STORE = SUPA.replace("/rest/v1/rpc/","/storage/v1");
+function paintPrev(){
+  const u=$("imImg").value;
+  $("imPrev").innerHTML = safeImg(u) ? `<img src="${esc(u)}" alt="">` : esc($("imEmoji").value||"🍽️");
+  $("imRemove").hidden=!u;
+}
+async function compress(file){
+  const url=URL.createObjectURL(file);
+  try{
+    const img=await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=url; });
+    const s=Math.min(1,900/Math.max(img.naturalWidth,img.naturalHeight)), c=document.createElement("canvas");
+    c.width=Math.round(img.naturalWidth*s); c.height=Math.round(img.naturalHeight*s);
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    return await new Promise(res=>c.toBlob(res,"image/jpeg",0.82));
+  } finally { URL.revokeObjectURL(url); }
+}
+async function uploadImg(file){
+  const blob=await compress(file); if(!blob) throw new Error("image");
+  const t=await rpc("owner_upload_ticket",{p_pin:pin}); if(!t||!t.ok) throw new Error("ticket");
+  const r=await fetch(`${STORE}/object/menu/${t.name}`,{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+KEY,"Content-Type":"image/jpeg"},body:blob});
+  if(!r.ok) throw new Error("upload");
+  return `${STORE}/object/public/menu/${t.name}`;
+}
+let uploading=false;
+$("imFile").onchange=async()=>{
+  const f=$("imFile").files[0]; if(!f) return;
+  uploading=true; $("imSave").disabled=true; $("imPickTxt").textContent="⏳ بار دەکرێت…";
+  try{ $("imImg").value=await uploadImg(f); paintPrev(); toast("وێنە بار کرا ✓ پاشەکەوت بکە"); }
+  catch(e){ toast(e.message==="image"?"ئەم وێنەیە ناخوێنرێتەوە، وێنەیەکی تر هەڵبژێرە.":"وێنە بار نەکرا، ئینتەرنێت بپشکنە و دووبارە هەوڵ بدەرەوە.",true); }
+  uploading=false; $("imSave").disabled=false; $("imPickTxt").textContent="📷 هەڵبژاردنی وێنە"; $("imFile").value="";
+};
+$("imRemove").onclick=()=>{ $("imImg").value=""; paintPrev(); };
+$("imEmoji").oninput=paintPrev;
 $("imSave").onclick=async()=>{
+  if(uploading) return;
   const img=$("imImg").value.trim();
-  if(img && !safeImg(img)){ toast("لینکی وێنە دەبێت بە https:// دەست پێبکات.",true); return; }
   const p=parseInt($("imPrice").value,10);
   if(isNaN(p)||p<0){ toast(ERR.price,true); return; }
   $("imSave").disabled=true;
