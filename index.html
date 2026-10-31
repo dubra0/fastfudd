@@ -408,7 +408,8 @@ function renderCart(){
        <div class="field"><label>ناوت</label><input id="oName" autocomplete="name" placeholder="ناوی تەواو" value="${esc(saved.name)}"></div>
        <div class="field"><label>ژمارەی مۆبایل</label><input id="oPhone" inputmode="tel" autocomplete="tel" placeholder="0750 123 4567" value="${esc(saved.phone)}"></div>
        <div class="field"><label>ناونیشانی گەیاندن</label><textarea id="oAddr" placeholder="گەڕەک، کۆڵان، نیشانەی ماڵ...">${esc(saved.addr)}</textarea></div>
-       <button class="btn ghost" id="locBtn" type="button" style="margin-top:0">📍 شوێنی ئێستام بنێرە (بۆ گەیاندنی ورد)</button>
+       <div class="field" style="margin-bottom:6px"><label>شوێنی ماڵەکەت (پێویستە)</label></div>
+       <button class="btn ghost" id="locBtn" type="button" style="margin-top:0">📍 شوێنی ئێستام بنێرە</button>
        <button class="btn ghost" id="pickBtn" type="button" style="font-size:.92rem;padding:11px">🗺️ لەسەر نەخشە دیاری بکە</button>
        <p class="hint" id="locStatus" style="margin:6px 0 0;line-height:1.7"></p>
        <div id="pick" class="pick" dir="ltr" hidden></div>
@@ -423,6 +424,8 @@ async function placeOrder(){
   const name=$("oName").value.trim(), phone=$("oPhone").value.trim(), addr=$("oAddr").value.trim();
   if(!name||!phone||!addr){ alert("تکایە ناو، ژمارە و ناونیشان بنووسە."); return; }
   if(phone.replace(/\D/g,"").length<7){ alert("ژمارەی مۆبایل دروست نییە."); return; }
+  // بێ شوێن گەیەنەر ناگاتە لای کڕیار
+  if(!geo){ alert("تکایە شوێنی ماڵەکەت دیاری بکە بۆ ئەوەی گەیەنەر بیدۆزێتەوە."); pickManual(); $("pickBtn").scrollIntoView({behavior:"smooth",block:"start"}); return; }
   LS.set("mln_cust", JSON.stringify({name,phone,addr}));
   const btn=$("placeBtn"); btn.disabled=true; btn.textContent="چاوەڕێ بکە…";
   const items=Object.values(cart).map(l=>({id:l.id, q:l.q, size:l.size||null, extras:l.ex, note:l.note}));

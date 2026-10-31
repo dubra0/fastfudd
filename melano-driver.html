@@ -113,7 +113,7 @@ async function loop(){
   let r; try{ r=await rpc("driver_orders",{p_name:me.name,p_pin:me.pin}); }catch(e){ return; }
   if(!r||!r.ok){ clearInterval(timer); $("login").hidden=false; $("app").hidden=true; return; }
   const orders=r.orders||[];
-  mine=orders.filter(o=>o.status==="accepted"); gpsSync(mine.length>0); syncMap(); sendPos();
+  mine=orders.filter(o=>o.status==="accepted"); allOrders=orders; gpsSync(mine.length>0); syncMap(); sendPos();
   const pend=orders.filter(o=>o.status==="pending").length;
   if(started && pend>lastPending) bell();
   lastPending=pend; started=true;
@@ -133,7 +133,7 @@ async function loop(){
   $("list").querySelectorAll("[data-deliver]").forEach(b=>b.onclick=async()=>{ b.disabled=true; await rpc("deliver_order",{p_name:me.name,p_pin:me.pin,p_num:b.dataset.deliver}); loop(); });
 }
 // نەخشەکەت هەمیشە شوێنی خۆت نیشان دەدات؛ شوێن تەنها کاتی گەیاندن بۆ کڕیار دەنێردرێت
-let watchId=null, lastSent=0, pos=null, fixAt=0, wake=null, delivering=false, mine=[];
+let watchId=null, lastSent=0, pos=null, fixAt=0, wake=null, delivering=false, mine=[], allOrders=[];
 let leaflet=null, map=null, dMark=null, accC=null, routeLine=null, homes={}, follow=true, route=null, routeNum=null, routeAt=0, routeFrom=null, routeBusy=false;
 const km = (a,b,c,d) => { const t=x=>x*Math.PI/180, h=Math.pow(Math.sin(t(c-a)/2),2)+Math.cos(t(a))*Math.cos(t(c))*Math.pow(Math.sin(t(d-b)/2),2); return 12742*Math.asin(Math.sqrt(h)); };
 const fmtKm = k => k<1 ? `${Math.round(k*1000)} م` : `${k.toFixed(1)} کم`;
@@ -232,7 +232,7 @@ async function ensureMap(){
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);
     satCtl(L,map);
     map.on("dragstart",()=>follow=false);
-    $("rec").onclick=()=>{ follow=true; if(delivering&&dMark) map.setView(dMark.getLatLng(),17); else fitAll(); };
+    $("rec").onclick=()=>{ follow=true; fitAll(); };
   }
   return L;
 }
@@ -275,24 +275,28 @@ async function drawMe(){
   if(isNew) dMark=L.marker(d,{icon:mkIcon(L,"🛵","drv"),zIndexOffset:1000}).addTo(map); else dMark.setLatLng(d);
   if(!accC) accC=L.circle(d,{radius:pos.acc||0,color:"#ff7a1a",weight:1,fillOpacity:.1}).addTo(map); else { accC.setLatLng(d); accC.setRadius(pos.acc||0); }
   if(isNew) fitAll();
-  else if(follow && delivering && route) map.setView(d,Math.max(map.getZoom(),17));
-  else if(follow && !map.getBounds().pad(-0.15).contains(d)) fitAll();
+  else if(follow){
+    // هەمیشە 🛵 و 🏠 پێکەوە لەسەر شاشە دەمێننەوە
+    const b=map.getBounds().pad(-0.1);
+    if(!b.contains(d)||Object.values(homes).some(m=>!b.contains(m.getLatLng()))) fitAll();
+  }
   paintNav();
 }
 async function syncMap(){
-  const with_=mine.filter(o=>o.lat&&o.lng);
+  // پێش وەرگرتن هەموو داواکارییەکان، و دوای وەرگرتن تەنها ئەوەی خۆی نیشان دەدرێت
+  const with_=(mine.length?mine:allOrders).filter(o=>o.lat&&o.lng);
+  const t=mine.filter(o=>o.lat&&o.lng)[0];
   const info=$("dinfo");
-  if(!mine.length){ info.textContent=""; }
-  else if(!with_.length){ info.textContent="⚠️ کڕیار شوێنی نەناردووە، ناونیشانەکە بخوێنەوە"; }
-  if(!with_.length) $("nav").hidden=true;
+  if(!mine.length){ info.textContent=with_.length?"🏠 شوێنی کڕیارەکان لەسەر نەخشەیە":""; }
+  else if(!t){ info.textContent="⚠️ کڕیار شوێنی نەناردووە، ناونیشانەکە بخوێنەوە یان پەیوەندی پێوە بکە"; }
+  if(!t) $("nav").hidden=true;
   if(!with_.length && !Object.keys(homes).length && !routeLine) return;
   const L=await ensureMap(); if(!L) return;
   Object.keys(homes).forEach(n=>{ if(!with_.some(o=>o.num===n)){ homes[n].remove(); delete homes[n]; } });
   let added=false;
   with_.forEach(o=>{ if(!homes[o.num]){ homes[o.num]=L.marker([o.lat,o.lng],{icon:mkIcon(L,"🏠")}).bindTooltip(o.num).addTo(map); added=true; } });
-  const t=with_[0];
-  if(!t){ if(routeLine){ routeLine.remove(); routeLine=null; } route=null; routeNum=null; routePts=[]; return; }
   if(added&&follow) fitAll();
+  if(!t){ if(routeLine){ routeLine.remove(); routeLine=null; } route=null; routeNum=null; routePts=[]; return; }
   if(pos){
     const left=km(pos.lat,pos.lng,t.lat,t.lng);
     await refreshRoute(L,t);
