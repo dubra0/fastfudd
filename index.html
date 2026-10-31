@@ -123,7 +123,8 @@ body.orders .fab{display:none}
 .bar{height:10px;border-radius:99px;background:var(--soft);overflow:hidden}.bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--brand2),var(--brand));transition:width 1s}
 .pst{display:grid;grid-template-columns:repeat(3,1fr);text-align:center;margin-top:9px}.pst b{display:block;font-family:var(--fd);font-weight:900}.pst span{font-size:.74rem;color:var(--muted)}
 .tinfo{font-size:.82rem;color:var(--muted);text-align:center;margin-bottom:6px}
-.pick{height:220px;border-radius:14px;overflow:hidden;border:1px solid var(--line);margin-top:8px}
+.satb{width:42px;height:42px;border:0;border-radius:10px;background:#fff;font-size:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.pick{height:300px;border-radius:14px;overflow:hidden;border:1px solid var(--line);margin-top:8px}
 .chip{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(132px + env(safe-area-inset-bottom));z-index:39;border:0;border-radius:99px;background:var(--ok);color:#fff;font:inherit;font-weight:800;padding:10px 18px;cursor:pointer;box-shadow:0 8px 20px -6px rgba(0,0,0,.5);white-space:nowrap}
 </style>
 </head>
@@ -326,10 +327,17 @@ function getLoc(){
   if(!navigator.geolocation){ locFail(false); return; }
   st.textContent="📡 شوێنی ورد دەدۆزرێتەوە…"; st.style.color=""; btn.disabled=true;
   // چەند چرکەیەک GPS دەخوێنینەوە و وردترین خوێندنەوە هەڵدەگرین
-  let best=null, id=null, over=false, tm=null, denied=false;
+  let best=null, id=null, over=false, tm=null, denied=false, samples=[];
   const finish=()=>{
     const b=$("locBtn"); if(b) b.disabled=false;
-    if(best){ geo={lat:+best.latitude.toFixed(6), lng:+best.longitude.toFixed(6), acc:best.accuracy}; paintLoc(); }
+    if(best){
+      // خوێندنەوە باشەکان بەپێی وردییان تێکەڵ دەکرێن
+      const good=samples.filter(s=>s.accuracy<=best.accuracy*1.5);
+      let w=0, la=0, ln=0;
+      good.forEach(s=>{ const k=1/(s.accuracy*s.accuracy); w+=k; la+=s.latitude*k; ln+=s.longitude*k; });
+      geo = w ? {lat:+(la/w).toFixed(6), lng:+(ln/w).toFixed(6), acc:best.accuracy} : {lat:+best.latitude.toFixed(6), lng:+best.longitude.toFixed(6), acc:best.accuracy};
+      paintLoc();
+    }
     else locFail(denied);
   };
   const done=()=>{
@@ -338,12 +346,14 @@ function getLoc(){
     // GPS لەناو ماڵ زۆرجار وەڵام نادات، بۆیە شوێنی ئاسایی تاقی دەکەینەوە
     navigator.geolocation.getCurrentPosition(p=>{ best=p.coords; finish(); },e=>{ denied=e.code===1; finish(); },{enableHighAccuracy:false,maximumAge:300000,timeout:8000});
   };
-  tm=setTimeout(done,9000);
+  tm=setTimeout(done,15000);
   id=navigator.geolocation.watchPosition(p=>{
+    if(over) return;
+    samples.push(p.coords);
     if(!best||p.coords.accuracy<best.accuracy) best=p.coords;
-    const s=$("locStatus"); if(s) s.textContent=`📡 وردی ئێستا ±${Math.round(best.accuracy)} م…`;
-    if(best.accuracy<=12) done();
-  },e=>{ if(e.code===1){ denied=true; done(); } },{enableHighAccuracy:true,maximumAge:0,timeout:9000});
+    const s=$("locStatus"); if(s) s.textContent=`📡 وردی ئێستا ±${Math.round(best.accuracy)} م… لە شوێنی خۆت بوەستە`;
+    if(best.accuracy<=8&&samples.length>=3) done();
+  },e=>{ if(e.code===1){ denied=true; done(); } },{enableHighAccuracy:true,maximumAge:0,timeout:15000});
 }
 const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 const inApp=/FBAN|FBAV|FB_IAB|Instagram|Snapchat|TikTok|Line\/|Telegram/i.test(navigator.userAgent);
@@ -366,7 +376,7 @@ function showPick(c,z){
     const box=$("pick"); if(!box) return;
     box.hidden=false;
     if(pick){ try{ pick.remove(); }catch(e){} }
-    pick=L.map(box).setView(c,z); addTiles(L,pick);
+    pick=L.map(box).setView(c,z); addTiles(L,pick); satCtl(L,pick);
     const m=L.marker(c,{icon:mkIcon(L,"🏠"),draggable:true}).addTo(pick);
     const setHome=p=>{ geo={lat:+p.lat.toFixed(6), lng:+p.lng.toFixed(6), acc:0}; LS.set("mln_home",JSON.stringify([geo.lat,geo.lng])); const s=$("locStatus"); if(s){ s.textContent="✓ شوێنی ماڵەکەت بە دەست دیاری کرا"; s.style.color="var(--ok)"; } };
     m.on("dragend",()=>setHome(m.getLatLng()));
@@ -375,10 +385,10 @@ function showPick(c,z){
 }
 function paintLoc(){
   const st=$("locStatus"), btn=$("locBtn"); if(!st||!geo) return;
-  const weak=geo.acc>100;
-  st.textContent = geo.acc ? `${weak?"⚠️ وردی کەمە":"✓ شوێنەکەت وەرگیرا"} (±${Math.round(geo.acc)} م) · 🏠 ڕابکێشە سەر دەرگای ماڵەکەت` : "✓ شوێنی ماڵەکەت بە دەست دیاری کرا";
+  const weak=geo.acc>30;
+  st.textContent = geo.acc ? `${weak?"⚠️ وردی کەمە":"✓ شوێنەکەت وەرگیرا"} (±${Math.round(geo.acc)} م) · 🛰️ دابگرە و 🏠 ڕابکێشە سەر دەرگای ماڵەکەت` : "✓ شوێنی ماڵەکەت بە دەست دیاری کرا";
   st.style.color=weak?"var(--brand)":"var(--ok)"; btn.textContent="🔄 دووبارە وەرگرتنی شوێن";
-  showPick([geo.lat,geo.lng],weak?15:18);
+  showPick([geo.lat,geo.lng],geo.acc>100?16:19);
 }
 
 function renderCart(){
@@ -493,6 +503,17 @@ let leaflet=null, map=null, pick=null, dMark=null, cMark=null, sMark=null, accC=
 let lastR=null, lastD=null, trail=[], follow=true, route=null, routeAt=0, routeFrom=null, routeBusy=false, nearDone=false, rcptDone=false;
 function resetTrack(){ if(map){ try{ map.remove(); }catch(e){} } map=dMark=cMark=sMark=accC=trailLine=routeLine=lastR=lastD=route=routeFrom=null; trail=[]; follow=true; routeAt=0; nearDone=false; rcptDone=false; }
 const addTiles = (L,m) => L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(m);
+// دوگمەی گۆڕینی نەخشە بۆ وێنەی ئاسمانی
+function satCtl(L,m){
+  const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:20,maxNativeZoom:19,attribution:"© Esri"});
+  const C=L.Control.extend({options:{position:"topright"},onAdd(){
+    const b=L.DomUtil.create("button","satb"); b.type="button"; b.textContent="🛰️"; b.setAttribute("aria-label","وێنەی ئاسمانی");
+    L.DomEvent.disableClickPropagation(b);
+    b.onclick=()=>{ if(m.hasLayer(sat)){ m.removeLayer(sat); b.textContent="🛰️"; } else { sat.addTo(m); b.textContent="🗺️"; } };
+    return b;
+  }});
+  m.addControl(new C());
+}
 const mkIcon = (L,e,cls) => L.divIcon({className:"mk "+(cls||""),html:`<span>${e}</span>`,iconSize:[40,40],iconAnchor:[20,20]});
 const fmtKm = k => k<1 ? `${Math.round(k*1000)} م` : `${k.toFixed(1)} کم`;
 function loadLeaflet(){
@@ -506,7 +527,7 @@ function loadLeaflet(){
 }
 function km(a,b,c,d){ const t=x=>x*Math.PI/180, h=Math.pow(Math.sin(t(c-a)/2),2)+Math.cos(t(a))*Math.cos(t(c))*Math.pow(Math.sin(t(d-b)/2),2); return 12742*Math.asin(Math.sqrt(h)); }
 function hideMap(){ ["mapw","prog","near"].forEach(id=>{ const e=$(id); if(e) e.hidden=true; }); const i=$("tinfo"); if(i) i.textContent=""; }
-function glide(m,to){ const a=m.getLatLng(), t0=performance.now(); cancelAnimationFrame(m._raf); (function step(t){ const k=Math.min(1,(t-t0)/2800); m.setLatLng([a.lat+(to[0]-a.lat)*k, a.lng+(to[1]-a.lng)*k]); if(k<1) m._raf=requestAnimationFrame(step); })(t0); }
+function glide(m,to){ const a=m.getLatLng(), t0=performance.now(); cancelAnimationFrame(m._raf); (function step(t){ const k=Math.min(1,(t-t0)/1800); m.setLatLng([a.lat+(to[0]-a.lat)*k, a.lng+(to[1]-a.lng)*k]); if(k<1) m._raf=requestAnimationFrame(step); })(t0); }
 function fitAll(){ const p=[]; if(dMark) p.push(dMark.getLatLng()); if(cMark) p.push(cMark.getLatLng()); if(!map||!p.length) return; if(p.length>1) map.fitBounds(p,{padding:[50,50],maxZoom:17}); else map.setView(p[0],16); }
 async function refreshRoute(L,d,c){
   const now=Date.now();
@@ -531,7 +552,7 @@ async function showMap(r){
   w.hidden=false;
   if(!map || map.getContainer()!==box){
     if(map){ try{ map.remove(); }catch(e){} }
-    map=L.map(box); addTiles(L,map); dMark=cMark=sMark=accC=trailLine=routeLine=null; route=null; follow=true; map._fit=false;
+    map=L.map(box); addTiles(L,map); satCtl(L,map); dMark=cMark=sMark=accC=trailLine=routeLine=null; route=null; follow=true; map._fit=false;
     map.on("dragstart",()=>follow=false);
     $("rec").onclick=()=>{ follow=true; fitAll(); };
   }
@@ -595,7 +616,7 @@ function startTrack(){
     else if(r.status==="delivered"){ el.innerHTML=`<div class="trk-row del">✅ گەیەنرا! نۆشی گیان 🍔</div>`; endTrack(); }
     else if(r.status==="cancelled"){ el.innerHTML=`<div class="trk-row can">❌ ببورە، داواکارییەکەت هەڵوەشێنرایەوە.</div>`; $("steps").innerHTML=""; endTrack(); }
   };
-  paint(); trackTimer=setInterval(paint, 3000);
+  paint(); trackTimer=setInterval(paint, 2000);
 }
 // داواکاری چالاکی وەشانی پێشوو دەگوازرێتەوە بۆ لیستەکە
 (function migrate(){
