@@ -81,7 +81,7 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
 <section id="login" class="login">
   <div class="ic">👑</div>
   <h1>پانێڵی خاوەن</h1>
-  <input id="pin" type="password" inputmode="numeric" placeholder="PIN ی خاوەن" autocomplete="current-password">
+  <input id="pin" type="password" placeholder="پاسوۆردی خاوەن" autocomplete="current-password">
   <button class="btn" id="go">چوونەژوورەوە</button>
   <p class="msg" id="lmsg"></p>
 </section>
@@ -146,12 +146,15 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
       <button class="btn" id="saveShop" style="margin-top:14px;width:100%">پاشەکەوتکردن</button>
     </div>
     <div class="card">
-      <h2>🔒 گۆڕینی PIN ی خاوەن</h2>
+      <h2>🔒 گۆڕینی پاسوۆرد</h2>
       <div class="row">
-        <div class="f"><label>PIN ی نوێ</label><input id="np1" type="password" inputmode="numeric" autocomplete="new-password"></div>
-        <div class="f"><label>دووبارە</label><input id="np2" type="password" inputmode="numeric" autocomplete="new-password"></div>
-        <button class="btn sm" id="savePin">گۆڕین</button>
+        <div class="f"><label>پاسوۆردی ئێستا</label><input id="np0" type="password" autocomplete="current-password"></div>
+        <div class="f"><label>پاسوۆردی نوێ</label><input id="np1" type="password" autocomplete="new-password"></div>
+        <div class="f"><label>دووبارە پاسوۆردی نوێ</label><input id="np2" type="password" autocomplete="new-password"></div>
       </div>
+      <label style="display:flex;gap:8px;align-items:center;margin:10px 0;font-size:.85rem;color:var(--muted)"><input type="checkbox" id="npShow" style="width:auto"> پاسوۆردەکان نیشان بدە</label>
+      <button class="btn" id="savePin" style="width:100%">گۆڕینی پاسوۆرد</button>
+      <p style="color:var(--muted);font-size:.8rem;margin:8px 0 0">دەتوانیت پیت، ژمارە و هێما بەکاربهێنیت (لانیکەم ٤ پیت). دوای گۆڕین، هەر ئامێرێکی تر کە چووبێتە ژوورەوە دەردەکرێت.</p>
     </div>
     <div class="card">
       <h2>🔗 لینکەکان</h2>
@@ -198,7 +201,7 @@ const EMOJIS = ["🍔","🍕","🌯","🌭","🍟","🍗","🥙","🧆","🥗","
 async function rpc(fn, body){ const r=await fetch(SUPA+fn,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY,Authorization:"Bearer "+KEY},body:JSON.stringify(body||{})}); return r.json(); }
 function bell(){ try{ const A=window.AudioContext||window.webkitAudioContext; if(!A)return; const c=new A(); [988,1319,1760].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+i*0.14;o.type="sine";o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.3,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.6);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+0.6);});}catch(e){} }
 function toast(m, bad){ const t=$("toast"); t.textContent=m; t.className="toast on"+(bad?" bad":""); clearTimeout(toast.h); toast.h=setTimeout(()=>t.className="toast"+(bad?" bad":""),2400); }
-const ERR = {name:"تکایە ناو بنووسە.",price:"نرخ هەڵەیە.",pin:"PIN دەبێت لانیکەم ٤ ژمارە بێت.",fee:"نرخی گەیاندن دەبێت تەنها ژمارە بێت.",cat:"بەشێک هەڵبژێرە.",exists:"گەیەنەرێک بەم ناوە هەیە."};
+const ERR = {name:"تکایە ناو بنووسە.",price:"نرخ هەڵەیە.",pin:"پاسوۆرد دەبێت لانیکەم ٤ پیت یان ژمارە بێت.",fee:"نرخی گەیاندن دەبێت تەنها ژمارە بێت.",cat:"بەشێک هەڵبژێرە.",exists:"گەیەنەرێک بەم ناوە هەیە."};
 async function act(fn, body, okMsg){
   let r; try{ r=await rpc(fn, Object.assign({p_pin:pin}, body)); }catch(e){ r=null; }
   if(r&&r.ok){ if(okMsg)toast(okMsg); return r; }
@@ -213,7 +216,7 @@ async function login(){
   const p=$("pin").value.trim(); if(!p)return; $("go").disabled=true; $("lmsg").textContent="";
   let r; try{ r=await rpc("owner_data",{p_pin:p}); }catch(e){ r=null; }
   $("go").disabled=false;
-  if(!r||!r.ok){ $("lmsg").textContent=r?"PIN هەڵەیە.":"ئینتەرنێت نییە."; return; }
+  if(!r||!r.ok){ $("lmsg").textContent=r?"پاسوۆرد هەڵەیە.":"ئینتەرنێت نییە."; return; }
   pin=p; try{ sessionStorage.setItem("mln_own",pin); }catch(e){} enter(r);
 }
 function enter(data){
@@ -387,11 +390,17 @@ $("saveShop").onclick=async()=>{
   const ok=await act("owner_set_settings",{p_data:{shop_name:$("sName").value.trim()||"Melano Fast Food",tagline:$("sTag").value.trim(),delivery_time:$("sTime").value.trim(),delivery_fee:fee,whatsapp:$("sWa").value.replace(/\D/g,"")}},"پاشەکەوت کرا ✓");
   $("saveShop").disabled=false; if(ok) loadMenu();
 };
+$("npShow").onchange=()=>["np0","np1","np2"].forEach(id=>$(id).type=$("npShow").checked?"text":"password");
 $("savePin").onclick=async()=>{
-  const a=$("np1").value.trim(), b=$("np2").value.trim();
+  const c=$("np0").value.trim(), a=$("np1").value.trim(), b=$("np2").value.trim();
+  if(!c){ toast("پاسوۆردی ئێستا بنووسە.",true); return; }
   if(a.length<4){ toast(ERR.pin,true); return; }
-  if(a!==b){ toast("دوو PIN ەکە وەک یەک نین.",true); return; }
-  if(await act("owner_change_pin",{p_new:a},"PIN گۆڕدرا ✓")){ pin=a; try{ sessionStorage.setItem("mln_own",pin); }catch(e){} $("np1").value=""; $("np2").value=""; }
+  if(a!==b){ toast("دوو پاسوۆردە نوێیەکە وەک یەک نین.",true); return; }
+  $("savePin").disabled=true;
+  let r; try{ r=await rpc("owner_change_pin",{p_pin:c,p_new:a}); }catch(e){ r=null; }
+  $("savePin").disabled=false;
+  if(r&&r.ok){ pin=a; try{ sessionStorage.setItem("mln_own",pin); }catch(e){} ["np0","np1","np2"].forEach(id=>$(id).value=""); toast("پاسوۆرد گۆڕدرا ✓"); }
+  else toast(r?(r.error?ERR[r.error]:"پاسوۆردی ئێستا هەڵەیە."):"ئینتەرنێت بپشکنە.",true);
 };
 const base=location.href.split("?")[0].replace(/[^\/]*$/,"");
 $("lnkC").value=base; $("lnkD").value=base+"melano-driver.html";
