@@ -41,6 +41,13 @@ input{font:inherit;padding:12px 14px;border:1px solid var(--line);border-radius:
 @keyframes bl{50%{opacity:.3}}
 .gps{border-radius:12px;padding:10px 12px;font-size:.85rem;font-weight:700;margin-bottom:12px;background:var(--soft);color:var(--muted)}
 .gps.on{background:rgba(34,197,94,.14);color:var(--ok)}.gps.bad{background:rgba(255,122,26,.16);color:var(--brand)}
+.mapw{position:relative;margin-bottom:8px}
+#dmap{height:42vh;min-height:260px;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:var(--soft)}
+.rec{position:absolute;left:10px;bottom:10px;z-index:500;width:42px;height:42px;border-radius:12px;border:0;background:#fff;color:#111;font-size:20px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.3)}
+.mk{background:none;border:0}.mk span{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.35);font-size:22px}
+.mk.drv span{box-shadow:0 0 0 3px #ff7a1a,0 4px 14px rgba(0,0,0,.4)}
+.dinfo{font-size:.9rem;font-weight:700;margin-bottom:12px;text-align:center}.dinfo a{color:var(--brand);text-decoration:none;font-weight:800}
+.dist{color:var(--brand);font-weight:800;font-size:.85rem}
 </style>
 </head>
 <body>
@@ -61,6 +68,8 @@ input{font:inherit;padding:12px 14px;border:1px solid var(--line);border-radius:
     <div style="display:flex;align-items:center;gap:10px"><span class="live"><span class="dot"></span>زیندوو</span><button class="btn ghost sm" id="out">دەرچوون</button></div>
   </div>
   <div id="gps" class="gps" hidden></div>
+  <div class="mapw" id="mapw" hidden><div id="dmap" dir="ltr"></div><button class="rec" id="rec" type="button" aria-label="ناوەندکردن">🎯</button></div>
+  <div class="dinfo" id="dinfo"></div>
   <div id="list"><div class="empty">چاوەڕێ بکە…</div></div>
 </div>
 
@@ -86,7 +95,7 @@ async function login(){
   me={name:name,pin:pin}; try{ sessionStorage.setItem("mln_drv",JSON.stringify(me)); }catch(e){}
   enter();
 }
-function enter(){ $("login").hidden=true; $("app").hidden=false; $("me").textContent="بەخێربێیت "+me.name; loop(); clearInterval(timer); timer=setInterval(loop,4000); }
+function enter(){ $("login").hidden=true; $("app").hidden=false; $("me").textContent="بەخێربێیت "+me.name; startGps(); loop(); clearInterval(timer); timer=setInterval(loop,4000); }
 $("go").onclick=login; $("dPin").onkeydown=e=>{if(e.key==="Enter")login();};
 $("out").onclick=()=>{ clearInterval(timer); try{sessionStorage.removeItem("mln_drv");}catch(e){} location.reload(); };
 
@@ -94,7 +103,7 @@ async function loop(){
   let r; try{ r=await rpc("driver_orders",{p_name:me.name,p_pin:me.pin}); }catch(e){ return; }
   if(!r||!r.ok){ clearInterval(timer); $("login").hidden=false; $("app").hidden=true; return; }
   const orders=r.orders||[];
-  gpsSync(orders.some(o=>o.status==="accepted")); sendPos();
+  mine=orders.filter(o=>o.status==="accepted"); gpsSync(mine.length>0); syncMap(); sendPos();
   const pend=orders.filter(o=>o.status==="pending").length;
   if(started && pend>lastPending) bell();
   lastPending=pend; started=true;
@@ -106,39 +115,118 @@ async function loop(){
       <div class="chd"><span>${esc(o.num)} · ${o.t||""}</span><span class="badge ${mine?'mine':'new'}">${mine?'من دەیبەم':'نوێ 🔔'}</span></div>
       <div class="items">${items}</div>
       <div class="meta">👤 ${esc(o.cust_name)} · 📞 ${esc(o.cust_phone)}</div>
-      <div class="meta">📍 ${esc(o.address)}</div>${map}
+      <div class="meta">📍 ${esc(o.address)}</div>${(pos&&o.lat&&o.lng)?`<div class="dist">📏 ${fmtKm(km(pos.lat,pos.lng,o.lat,o.lng))} لێتەوە</div>`:""}${map}
       <div class="foot"><b>${money(o.total)}</b>${mine?`<button class="btn ok sm" data-deliver="${esc(o.num)}">✅ گەیاندرا</button>`:`<button class="btn sm" data-take="${esc(o.num)}">🛵 من دەیبەم</button>`}</div>
     </div>`;
   }).join("") : `<div class="empty">ئێستا داواکاری نییە. چاوەڕێ بکە 🛵</div>`;
   $("list").querySelectorAll("[data-take]").forEach(b=>b.onclick=async()=>{ b.disabled=true; const r2=await rpc("accept_order",{p_name:me.name,p_pin:me.pin,p_num:b.dataset.take}); if(r2&&r2.ok)loop(); else{ alert(r2&&r2.error==="taken"?"ئەم داواکارییە وەرگیراوە.":"نەکرا."); loop(); } });
   $("list").querySelectorAll("[data-deliver]").forEach(b=>b.onclick=async()=>{ b.disabled=true; await rpc("deliver_order",{p_name:me.name,p_pin:me.pin,p_num:b.dataset.deliver}); loop(); });
 }
-// کاتێک داواکارییەکت وەرگرتووە، شوێنەکەت بە زیندوویی بۆ کڕیار دەنێردرێت
-let watchId=null, lastSent=0, pos=null, wake=null;
-function gpsSync(delivering){
-  const el=$("gps");
-  if(delivering && watchId===null && navigator.geolocation){
-    el.className="gps"; el.textContent="📍 چاوەڕێی شوێن…";
-    watchId=navigator.geolocation.watchPosition(p=>{
-      const first=!pos;
-      pos={lat:+p.coords.latitude.toFixed(6), lng:+p.coords.longitude.toFixed(6)};
-      el.className="gps on"; el.textContent="📍 شوێنەکەت بە زیندوویی بۆ کڕیار دەنێردرێت · پەڕەکە دامەخە";
-      sendPos(first);
-    }, ()=>{ el.className="gps bad"; el.textContent="⚠️ ڕێگە بە Location بدە بۆ ئەوەی کڕیار بزانێت لە کوێیت"; }, {enableHighAccuracy:true, maximumAge:5000, timeout:20000});
-    try{ if("wakeLock" in navigator) navigator.wakeLock.request("screen").then(w=>wake=w).catch(()=>{}); }catch(e){}
-  } else if(!delivering && watchId!==null){
-    navigator.geolocation.clearWatch(watchId); watchId=null; pos=null;
-    try{ if(wake){ wake.release(); wake=null; } }catch(e){}
-  }
-  if(delivering && !navigator.geolocation){ el.className="gps bad"; el.textContent="⚠️ ئەم ئامێرە شوێن پشتگیری ناکات"; }
-  el.hidden=!delivering;
+// نەخشەکەت هەمیشە شوێنی خۆت نیشان دەدات؛ شوێن تەنها کاتی گەیاندن بۆ کڕیار دەنێردرێت
+let watchId=null, lastSent=0, pos=null, fixAt=0, wake=null, delivering=false, mine=[];
+let leaflet=null, map=null, dMark=null, accC=null, routeLine=null, homes={}, follow=true, route=null, routeNum=null, routeAt=0, routeFrom=null, routeBusy=false;
+const km = (a,b,c,d) => { const t=x=>x*Math.PI/180, h=Math.pow(Math.sin(t(c-a)/2),2)+Math.cos(t(a))*Math.cos(t(c))*Math.pow(Math.sin(t(d-b)/2),2); return 12742*Math.asin(Math.sqrt(h)); };
+const fmtKm = k => k<1 ? `${Math.round(k*1000)} م` : `${k.toFixed(1)} کم`;
+const mkIcon = (L,e,cls) => L.divIcon({className:"mk "+(cls||""),html:`<span>${e}</span>`,iconSize:[40,40],iconAnchor:[20,20]});
+function loadLeaflet(){
+  if(leaflet) return leaflet;
+  leaflet = new Promise((res,rej)=>{
+    const l=document.createElement("link"); l.rel="stylesheet"; l.href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"; document.head.appendChild(l);
+    const s=document.createElement("script"); s.src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
+    s.onload=()=>res(window.L); s.onerror=()=>{ leaflet=null; rej(); }; document.head.appendChild(s);
+  });
+  return leaflet;
+}
+function gpsMsg(){
+  const el=$("gps"); el.hidden=false;
+  if(!pos){ el.className="gps"; el.textContent="📍 چاوەڕێی GPS…"; return; }
+  el.className="gps on"; el.textContent=(delivering?"📍 شوێنەکەت بۆ کڕیار دەنێردرێت · پەڕەکە دامەخە":"📍 شوێنی ئێستات")+(pos.acc?` · وردی ±${Math.round(pos.acc)} م`:"");
+}
+function startGps(){
+  if(watchId!==null) return;
+  if(!navigator.geolocation){ const el=$("gps"); el.hidden=false; el.className="gps bad"; el.textContent="⚠️ ئەم ئامێرە شوێن پشتگیری ناکات"; return; }
+  gpsMsg();
+  watchId=navigator.geolocation.watchPosition(p=>onFix(p.coords), ()=>{ const el=$("gps"); el.hidden=false; el.className="gps bad"; el.textContent="⚠️ ڕێگە بە Location بدە و GPS هەڵبکە"; }, {enableHighAccuracy:true, maximumAge:0, timeout:20000});
+}
+function onFix(c){
+  // خوێندنەوەی زۆر هەڵە فڕێ دەدرێت، مەگەر ماوەیەک هیچی باشتر نەهاتبێت
+  const now=Date.now();
+  if(c.accuracy>80 && pos && now-fixAt<20000) return;
+  const first=!pos; fixAt=now;
+  pos={lat:+c.latitude.toFixed(6), lng:+c.longitude.toFixed(6), acc:c.accuracy};
+  gpsMsg(); drawMe(); if(delivering) sendPos(first);
+}
+function gpsSync(on){
+  if(on===delivering) return; delivering=on; if(watchId!==null&&pos) gpsMsg();
+  try{
+    if(on && "wakeLock" in navigator) navigator.wakeLock.request("screen").then(w=>wake=w).catch(()=>{});
+    if(!on && wake){ wake.release(); wake=null; }
+  }catch(e){}
+  if(on) sendPos(true);
 }
 async function sendPos(force){
-  if(!pos) return; const now=Date.now();
-  if(!force && now-lastSent<8000) return; lastSent=now;
-  try{ await rpc("driver_ping",{p_name:me.name,p_pin:me.pin,p_lat:pos.lat,p_lng:pos.lng}); }catch(e){}
+  if(!pos||!delivering) return; const now=Date.now();
+  if(!force && now-lastSent<3000) return; lastSent=now;
+  try{ await rpc("driver_ping",{p_name:me.name,p_pin:me.pin,p_lat:pos.lat,p_lng:pos.lng,p_acc:pos.acc}); }catch(e){}
 }
-document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && watchId!==null){ try{ if("wakeLock" in navigator) navigator.wakeLock.request("screen").then(w=>wake=w).catch(()=>{}); }catch(e){} loop(); } });
+async function ensureMap(){
+  let L; try{ L=await loadLeaflet(); }catch(e){ return null; }
+  if(!map){
+    $("mapw").hidden=false;
+    map=L.map("dmap").setView(pos?[pos.lat,pos.lng]:[36.19,44.01],16);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);
+    map.on("dragstart",()=>follow=false);
+    $("rec").onclick=()=>{ follow=true; fitAll(); };
+  }
+  return L;
+}
+function fitAll(){
+  if(!map) return; const p=[]; if(dMark) p.push(dMark.getLatLng()); Object.values(homes).forEach(m=>p.push(m.getLatLng()));
+  if(p.length>1) map.fitBounds(p,{padding:[50,50],maxZoom:17}); else if(p.length) map.setView(p[0],17);
+}
+async function drawMe(){
+  if(!pos) return; const L=await ensureMap(); if(!L) return;
+  const d=[pos.lat,pos.lng];
+  const isNew=!dMark;
+  if(isNew) dMark=L.marker(d,{icon:mkIcon(L,"🛵","drv"),zIndexOffset:1000}).addTo(map); else dMark.setLatLng(d);
+  if(!accC) accC=L.circle(d,{radius:pos.acc||0,color:"#ff7a1a",weight:1,fillOpacity:.1}).addTo(map); else { accC.setLatLng(d); accC.setRadius(pos.acc||0); }
+  if(isNew) fitAll(); else if(follow && !map.getBounds().pad(-0.15).contains(d)) fitAll();
+}
+async function syncMap(){
+  const with_=mine.filter(o=>o.lat&&o.lng);
+  const info=$("dinfo");
+  if(!mine.length){ info.textContent=""; }
+  else if(!with_.length){ info.textContent="⚠️ کڕیار شوێنی نەناردووە، ناونیشانەکە بخوێنەوە"; }
+  if(!with_.length && !Object.keys(homes).length && !routeLine) return;
+  const L=await ensureMap(); if(!L) return;
+  Object.keys(homes).forEach(n=>{ if(!with_.some(o=>o.num===n)){ homes[n].remove(); delete homes[n]; } });
+  let added=false;
+  with_.forEach(o=>{ if(!homes[o.num]){ homes[o.num]=L.marker([o.lat,o.lng],{icon:mkIcon(L,"🏠")}).bindTooltip(o.num).addTo(map); added=true; } });
+  const t=with_[0];
+  if(!t){ if(routeLine){ routeLine.remove(); routeLine=null; } route=null; routeNum=null; return; }
+  if(added&&follow) fitAll();
+  if(pos){
+    const left=km(pos.lat,pos.lng,t.lat,t.lng);
+    await refreshRoute(L,t);
+    info.innerHTML=`🏠 ${esc(t.num)} · ${fmtKm(route&&routeNum===t.num?route.km:left)} ماوە · ~${route&&routeNum===t.num?route.min:Math.max(1,Math.ceil(left/25*60))} خولەک · <a href="https://www.google.com/maps/dir/?api=1&destination=${t.lat},${t.lng}&travelmode=driving" target="_blank" rel="noopener">🧭 ڕێنمایی</a>`;
+  }
+}
+async function refreshRoute(L,t){
+  const now=Date.now();
+  if(routeBusy || (routeNum===t.num && route && (now-routeAt<15000 || km(routeFrom[0],routeFrom[1],pos.lat,pos.lng)<0.04))) return;
+  routeBusy=true; routeAt=now; const from=[pos.lat,pos.lng];
+  try{
+    const j=await fetch(`https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${t.lng},${t.lat}?overview=full&geometries=geojson`).then(x=>x.json());
+    const rt=j.routes&&j.routes[0];
+    if(rt){
+      route={km:rt.distance/1000, min:Math.max(1,Math.round(rt.duration/60))}; routeNum=t.num; routeFrom=from;
+      const ll=rt.geometry.coordinates.map(p=>[p[1],p[0]]);
+      if(routeLine) routeLine.setLatLngs(ll); else routeLine=L.polyline(ll,{color:"#ff7a1a",weight:5,opacity:.8}).addTo(map);
+    }
+  }catch(e){}
+  routeBusy=false;
+}
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && me.pin){ try{ if(delivering && "wakeLock" in navigator) navigator.wakeLock.request("screen").then(w=>wake=w).catch(()=>{}); }catch(e){} loop(); } });
 if(me.pin) enter();
 </script>
 </body>

@@ -68,9 +68,29 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f);font-si
 .trk{margin:12px 0}.trk-row{border-radius:14px;padding:14px;font-weight:800;text-align:center}
 .trk-row.pend{background:var(--soft);color:var(--brand)}.trk-row.acc{background:rgba(21,163,90,.14);color:var(--ok)}.trk-row.del{background:rgba(21,163,90,.2);color:var(--ok)}
 .trk-row.can{background:rgba(226,59,46,.12);color:var(--brand)}
-.map{height:280px;border-radius:16px;overflow:hidden;margin:10px 0 6px;border:1px solid var(--line);background:var(--soft)}
+#okOv .sheet{height:100vh;height:100dvh;max-height:none;border-radius:0}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);margin:4px 0 12px}
+.st{text-align:center;font-size:.72rem;font-weight:700;color:var(--muted);position:relative;line-height:1.3}
+.st i{display:grid;place-items:center;width:36px;height:36px;margin:0 auto 4px;border-radius:50%;background:var(--soft);border:2px solid var(--line);font-style:normal;font-size:16px;position:relative;z-index:1}
+.st::before{content:"";position:absolute;top:17px;left:50%;width:100%;height:3px;background:var(--line)}
+.st:first-child::before{display:none}
+.st.done,.st.now{color:var(--ink)}.st.done::before,.st.now::before{background:var(--ok)}
+.st.done i{background:var(--ok);border-color:var(--ok)}
+.st.now i{border-color:var(--brand);animation:pulse 1.5s infinite}
+.st small{display:block;font-weight:500;color:var(--muted);font-family:var(--fd)}
+@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(226,59,46,.18)}}
+.near{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border-radius:12px;padding:10px;text-align:center;font-weight:800;margin-bottom:10px}
+.mapw{position:relative;margin:0 0 10px}
+.map{height:46vh;min-height:280px;border-radius:16px;overflow:hidden;border:1px solid var(--line);background:var(--soft)}
+.rec{position:absolute;left:10px;bottom:10px;z-index:500;width:42px;height:42px;border-radius:12px;border:0;background:#fff;color:#111;font-size:20px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.3)}
 .mk{background:none;border:0}.mk span{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.35);font-size:22px}
-.tinfo{font-size:.85rem;color:var(--muted);text-align:center;margin-bottom:6px}.tinfo a{color:var(--brand);font-weight:800;text-decoration:none}
+.mk.drv span{box-shadow:0 0 0 3px #ff7a1a,0 4px 14px rgba(0,0,0,.4)}.mk.flip span{transform:scaleX(-1)}
+.prog{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+.bar{height:10px;border-radius:99px;background:var(--soft);overflow:hidden}.bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--brand2),var(--brand));transition:width 1s}
+.pst{display:grid;grid-template-columns:repeat(3,1fr);text-align:center;margin-top:9px}.pst b{display:block;font-family:var(--fd);font-weight:900}.pst span{font-size:.74rem;color:var(--muted)}
+.tinfo{font-size:.82rem;color:var(--muted);text-align:center;margin-bottom:6px}
+.pick{height:220px;border-radius:14px;overflow:hidden;border:1px solid var(--line);margin-top:8px}
+.chip{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(max(16px,env(safe-area-inset-bottom)) + 62px);z-index:39;border:0;border-radius:99px;background:var(--ok);color:#fff;font:inherit;font-weight:800;padding:10px 18px;cursor:pointer;box-shadow:0 8px 20px -6px rgba(0,0,0,.5);white-space:nowrap}
 </style>
 </head>
 <body>
@@ -84,6 +104,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f);font-si
   <div class="menu" id="menu"><div class="empty">⏳ مینیو بار دەکرێت…</div></div>
 </div>
 <button class="fab" id="fab" hidden><span class="c" id="fabCount">0</span><span>سەبەتە</span><span id="fabTotal">0</span></button>
+<button class="chip" id="chip" hidden></button>
 <div class="overlay" id="cartOv"><div class="sheet"><div class="sheet-h"><b>🛒 سەبەتەکەت</b><button class="x" id="cartX">✕</button></div><div id="cartBody"></div></div></div>
 <div class="overlay" id="okOv"><div class="sheet"><div class="sheet-h"><b>داواکارییەکەت</b><button class="x" id="okX">✕</button></div><div id="okBody"></div></div></div>
 
@@ -166,17 +187,42 @@ function update(){
 $("fab").onclick=()=>{ renderCart(); $("cartOv").classList.add("on"); };
 $("cartX").onclick=()=>$("cartOv").classList.remove("on");
 $("cartOv").onclick=e=>{ if(e.target.id==="cartOv") $("cartOv").classList.remove("on"); };
-$("okX").onclick=()=>$("okOv").classList.remove("on");
-$("okOv").onclick=e=>{ if(e.target.id==="okOv") $("okOv").classList.remove("on"); };
+$("okX").onclick=()=>{ $("okOv").classList.remove("on"); syncChip(); };
+$("chip").onclick=()=>{ $("okOv").classList.add("on"); syncChip(); if(lastR) showMap(lastR); };
 
 function getLoc(){
   const st=$("locStatus"), btn=$("locBtn");
   if(!navigator.geolocation){ st.textContent="ئامێرەکەت شوێن پشتگیری ناکات."; return; }
-  st.textContent="چاوەڕێ بکە…";
-  navigator.geolocation.getCurrentPosition(p=>{
-    geo={lat:+p.coords.latitude.toFixed(6), lng:+p.coords.longitude.toFixed(6)};
-    st.textContent="✓ شوێنەکەت وەرگیرا"; st.style.color="var(--ok)"; btn.textContent="✓ شوێنەکەت وەرگیرا";
-  },()=>{ st.textContent="نەتوانرا. ڕێگە بە شوێن بدە، یان تەنها ناونیشان بنووسە."; st.style.color="var(--brand)"; },{enableHighAccuracy:true,timeout:10000});
+  st.textContent="📡 شوێنی ورد دەدۆزرێتەوە…"; st.style.color=""; btn.disabled=true;
+  // چەند چرکەیەک GPS دەخوێنینەوە و وردترین خوێندنەوە هەڵدەگرین
+  let best=null, id=null, over=false, tm=null;
+  const done=()=>{
+    if(over) return; over=true; clearTimeout(tm); navigator.geolocation.clearWatch(id);
+    const b=$("locBtn"), s=$("locStatus"); if(b) b.disabled=false;
+    if(best){ geo={lat:+best.latitude.toFixed(6), lng:+best.longitude.toFixed(6), acc:best.accuracy}; paintLoc(); }
+    else if(s){ s.textContent="نەتوانرا. ڕێگە بە Location بدە و GPS هەڵبکە، یان تەنها ناونیشان بنووسە."; s.style.color="var(--brand)"; }
+  };
+  tm=setTimeout(done,9000);
+  id=navigator.geolocation.watchPosition(p=>{
+    if(!best||p.coords.accuracy<best.accuracy) best=p.coords;
+    const s=$("locStatus"); if(s) s.textContent=`📡 وردی ئێستا ±${Math.round(best.accuracy)} م…`;
+    if(best.accuracy<=12) done();
+  },e=>{ if(e.code===1) done(); },{enableHighAccuracy:true,maximumAge:0,timeout:9000});
+}
+function paintLoc(){
+  const st=$("locStatus"), btn=$("locBtn"); if(!st||!geo) return;
+  st.textContent=`✓ شوێنەکەت وەرگیرا${geo.acc?` (وردی ±${Math.round(geo.acc)} م)`:""} · 🏠 ڕابکێشە سەر دەرگای ماڵەکەت بۆ وردی زیاتر`;
+  st.style.color="var(--ok)"; btn.textContent="🔄 دووبارە وەرگرتنی شوێن";
+  loadLeaflet().then(L=>{
+    const box=$("pick"); if(!box||!geo) return;
+    box.hidden=false;
+    if(pick){ try{ pick.remove(); }catch(e){} }
+    pick=L.map(box).setView([geo.lat,geo.lng],18); addTiles(L,pick);
+    const m=L.marker([geo.lat,geo.lng],{icon:mkIcon(L,"🏠"),draggable:true}).addTo(pick);
+    const setHome=p=>{ geo={lat:+p.lat.toFixed(6), lng:+p.lng.toFixed(6), acc:0}; const s=$("locStatus"); if(s) s.textContent="✓ شوێنی ماڵەکەت بە دەست دیاری کرا"; };
+    m.on("dragend",()=>setHome(m.getLatLng()));
+    pick.on("click",e=>{ m.setLatLng(e.latlng); setHome(e.latlng); });
+  }).catch(()=>{});
 }
 
 function renderCart(){
@@ -196,10 +242,11 @@ function renderCart(){
        <div class="field"><label>ناونیشانی گەیاندن</label><textarea id="oAddr" placeholder="گەڕەک، کۆڵان، نیشانەی ماڵ...">${esc(saved.addr)}</textarea></div>
        <button class="btn ghost" id="locBtn" type="button" style="margin-top:0">📍 شوێنی ئێستام بنێرە (بۆ گەیاندنی ورد)</button>
        <p class="hint" id="locStatus" style="margin:4px 0 0"></p>
+       <div id="pick" class="pick" dir="ltr" hidden></div>
        <button class="btn go" id="placeBtn" style="margin-top:10px" ${open?"":"disabled"}>${open?"ناردنی داواکاری · "+money(cartTotal()):"🔴 ئێستا داخراوین"}</button>`;
   wireQty($("cartBody"));
   $("locBtn").onclick=getLoc;
-  if(geo){ $("locStatus").textContent="✓ شوێنەکەت وەرگیرا"; $("locStatus").style.color="var(--ok)"; $("locBtn").textContent="✓ شوێنەکەت وەرگیرا"; }
+  if(geo) paintLoc();
   $("placeBtn").onclick=placeOrder;
 }
 
@@ -221,22 +268,25 @@ async function placeOrder(){
   myNum=res.num; myTok=res.token; LS.set("mln_order", JSON.stringify({num:myNum, tok:myTok})); bell();
   const wa = String(SHOP.whatsapp||"").replace(/\D/g,"");
   const waBtn = wa ? `<a class="btn ghost" href="https://wa.me/${wa}?text=${encodeURIComponent(`داواکاری ${myNum} · کۆ ${money(res.total)}\n${name} · ${phone}\n${addr}`)}" target="_blank" rel="noopener" style="text-align:center;display:block;text-decoration:none">📲 پەیوەندی بە واتسئەپ</a>` : "";
-  $("okBody").innerHTML=`
-    <div class="receipt"><div class="rh"><b>${esc(SHOP.shop_name||"Melano Fast Food")}</b><div style="font-size:.8rem;color:var(--muted)">داواکاری ${esc(myNum)}</div></div>
-      ${(res.items||[]).map(x=>`<div class="rr"><span>${esc(x.n)} × ${x.q}</span><span>${money(x.p*x.q)}</span></div>`).join("")}
-      <div class="rr sub"><span>گەیاندن</span><span>${res.fee?money(res.fee):"بێبەرامبەر"}</span></div>
-      <div class="rr rt"><span>کۆی گشتی</span><span>${money(res.total)}</span></div></div>
-    <div class="trk" id="trk"></div>${TRK_MAP}${waBtn}
-    <button class="btn ghost" id="newOrder">داواکارییەکی نوێ</button>`;
+  $("okBody").innerHTML=trackShell(waBtn);
   cart={}; geo=null; update(); $("cartOv").classList.remove("on"); $("okOv").classList.add("on");
   wireNewOrder(); startTrack();
 }
-function wireNewOrder(){ $("newOrder").onclick=()=>{ $("okOv").classList.remove("on"); }; }
-function endTrack(){ clearInterval(trackTimer); LS.del("mln_order"); myNum=null; myTok=null; hideMap(); }
+function wireNewOrder(){ $("newOrder").onclick=()=>{ $("okOv").classList.remove("on"); syncChip(); }; }
+function syncChip(){ const c=$("chip"); c.hidden=!myNum||$("okOv").classList.contains("on"); if(myNum) c.textContent=`🛵 بەدواداچوونی داواکاری ${myNum}`; }
+function endTrack(){ clearInterval(trackTimer); LS.del("mln_order"); myNum=null; myTok=null; lastR=null; hideMap(); syncChip(); }
 
-// ===== نەخشەی زیندووی گەیەنەر =====
-const TRK_MAP = `<div id="map" class="map" dir="ltr" hidden></div><div class="tinfo" id="tinfo"></div>`;
-let leaflet=null, map=null, dMark=null, cMark=null;
+// ===== بەدواداچوونی زیندوو لەناو پەڕەکەدا =====
+const trackShell = wa => `<div class="steps" id="steps"></div><div class="near" id="near" hidden>🔥 گەیەنەر زۆر نزیکە، ئامادە بە!</div>
+  <div class="mapw" id="mapw" hidden><div id="map" class="map" dir="ltr"></div><button class="rec" id="rec" type="button" aria-label="ناوەندکردن">🎯</button></div>
+  <div class="prog" id="prog" hidden><div class="bar"><i id="barFill"></i></div><div class="pst"><div><b id="pCame">—</b><span>هاتووە</span></div><div><b id="pLeft">—</b><span>ماوە</span></div><div><b id="pEta">—</b><span>کاتی گەیشتن</span></div></div></div>
+  <div class="tinfo" id="tinfo"></div><div class="trk" id="trk"></div><div id="rcpt"></div>${wa}<button class="btn ghost" id="newOrder">داخستن</button>`;
+let leaflet=null, map=null, pick=null, dMark=null, cMark=null, sMark=null, accC=null, trailLine=null, routeLine=null;
+let lastR=null, lastD=null, trail=[], follow=true, route=null, routeAt=0, routeFrom=null, routeBusy=false, nearDone=false, rcptDone=false;
+function resetTrack(){ if(map){ try{ map.remove(); }catch(e){} } map=dMark=cMark=sMark=accC=trailLine=routeLine=lastR=lastD=route=routeFrom=null; trail=[]; follow=true; routeAt=0; nearDone=false; rcptDone=false; }
+const addTiles = (L,m) => L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(m);
+const mkIcon = (L,e,cls) => L.divIcon({className:"mk "+(cls||""),html:`<span>${e}</span>`,iconSize:[40,40],iconAnchor:[20,20]});
+const fmtKm = k => k<1 ? `${Math.round(k*1000)} م` : `${k.toFixed(1)} کم`;
 function loadLeaflet(){
   if(leaflet) return leaflet;
   leaflet = new Promise((res,rej)=>{
@@ -247,49 +297,103 @@ function loadLeaflet(){
   return leaflet;
 }
 function km(a,b,c,d){ const t=x=>x*Math.PI/180, h=Math.pow(Math.sin(t(c-a)/2),2)+Math.cos(t(a))*Math.cos(t(c))*Math.pow(Math.sin(t(d-b)/2),2); return 12742*Math.asin(Math.sqrt(h)); }
-function hideMap(){ const m=$("map"), i=$("tinfo"); if(m) m.hidden=true; if(i) i.innerHTML=""; }
-async function showDriver(r){
-  const box=$("map"), info=$("tinfo"); if(!box||!info) return;
-  if(r.dlat==null||r.dlng==null){ box.hidden=true; info.textContent="📍 کاتێک گەیەنەر شوێنی بنێرێت، لێرە لەسەر نەخشە دەیبینیت"; return; }
-  const d=[r.dlat,r.dlng], c=(r.clat!=null&&r.clng!=null)?[r.clat,r.clng]:null;
-  const age=r.age<60?`${r.age} چرکە`:`${Math.round(r.age/60)} خولەک`;
-  const dist=c?` · ${km(d[0],d[1],c[0],c[1]).toFixed(1)} کم لێتەوە`:"";
-  info.innerHTML=`🛵 شوێنی گەیەنەر${dist} · نوێکرایەوە ${age} لەمەوبەر · <a href="https://maps.google.com/?q=${d[0]},${d[1]}" target="_blank" rel="noopener">Google Maps</a>`;
+function hideMap(){ ["mapw","prog","near"].forEach(id=>{ const e=$(id); if(e) e.hidden=true; }); const i=$("tinfo"); if(i) i.textContent=""; }
+function glide(m,to){ const a=m.getLatLng(), t0=performance.now(); cancelAnimationFrame(m._raf); (function step(t){ const k=Math.min(1,(t-t0)/2800); m.setLatLng([a.lat+(to[0]-a.lat)*k, a.lng+(to[1]-a.lng)*k]); if(k<1) m._raf=requestAnimationFrame(step); })(t0); }
+function fitAll(){ const p=[]; if(dMark) p.push(dMark.getLatLng()); if(cMark) p.push(cMark.getLatLng()); if(!map||!p.length) return; if(p.length>1) map.fitBounds(p,{padding:[50,50],maxZoom:17}); else map.setView(p[0],16); }
+async function refreshRoute(L,d,c){
+  const now=Date.now();
+  if(routeBusy || (route && (now-routeAt<15000 || km(routeFrom[0],routeFrom[1],d[0],d[1])<0.04))) return;
+  routeBusy=true; routeAt=now;
+  try{
+    const j=await fetch(`https://router.project-osrm.org/route/v1/driving/${d[1]},${d[0]};${c[1]},${c[0]}?overview=full&geometries=geojson`).then(x=>x.json());
+    const rt=j.routes&&j.routes[0];
+    if(rt&&map){
+      route={km:rt.distance/1000, min:Math.max(1,Math.round(rt.duration/60))}; routeFrom=d;
+      const ll=rt.geometry.coordinates.map(p=>[p[1],p[0]]);
+      if(routeLine) routeLine.setLatLngs(ll); else routeLine=L.polyline(ll,{color:"#e23b2e",weight:5,opacity:.7}).addTo(map);
+    }
+  }catch(e){}
+  routeBusy=false;
+}
+async function showMap(r){
+  const w=$("mapw"), box=$("map"); if(!w||!box) return;
+  const d=r.dlat!=null?[r.dlat,r.dlng]:null, c=r.clat!=null?[r.clat,r.clng]:null, s=r.slat!=null?[r.slat,r.slng]:null;
+  if(!d&&!c){ w.hidden=true; return; }
   let L; try{ L=await loadLeaflet(); }catch(e){ return; }
-  box.hidden=false;
+  w.hidden=false;
   if(!map || map.getContainer()!==box){
     if(map){ try{ map.remove(); }catch(e){} }
-    map=L.map(box); dMark=null; cMark=null; map._fit=false;
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);
+    map=L.map(box); addTiles(L,map); dMark=cMark=sMark=accC=trailLine=routeLine=null; route=null; follow=true; map._fit=false;
+    map.on("dragstart",()=>follow=false);
+    $("rec").onclick=()=>{ follow=true; fitAll(); };
   }
-  const ic=e=>L.divIcon({className:"mk",html:`<span>${e}</span>`,iconSize:[40,40],iconAnchor:[20,20]});
-  if(!dMark) dMark=L.marker(d,{icon:ic("🛵"),zIndexOffset:1000}).addTo(map); else dMark.setLatLng(d);
-  if(c && !cMark) cMark=L.marker(c,{icon:ic("🏠")}).addTo(map);
+  if(c && !cMark) cMark=L.marker(c,{icon:mkIcon(L,"🏠")}).addTo(map);
+  if(s && !sMark) sMark=L.marker(s,{icon:mkIcon(L,"🏪")}).addTo(map);
+  if(d){
+    if(s && !trail.length) trail.push(s);
+    if(!lastD || lastD[0]!==d[0] || lastD[1]!==d[1]) trail.push(d);
+    if(!dMark) dMark=L.marker(d,{icon:mkIcon(L,"🛵","drv"),zIndexOffset:1000}).addTo(map); else glide(dMark,d);
+    const el=dMark.getElement();
+    if(el && lastD && Math.abs(d[1]-lastD[1])>0.00001) el.classList.toggle("flip", d[1]>lastD[1]);
+    if(!accC) accC=L.circle(d,{radius:r.acc||0,color:"#ff7a1a",weight:1,fillOpacity:.1}).addTo(map); else { accC.setLatLng(d); accC.setRadius(r.acc||0); }
+    if(!trailLine) trailLine=L.polyline(trail,{color:"#15a35a",weight:5,opacity:.85}).addTo(map); else trailLine.setLatLngs(trail);
+    lastD=d;
+    if(c) refreshRoute(L,d,c);
+  }
   map.invalidateSize();
-  if(!map._fit){ if(c) map.fitBounds([d,c],{padding:[45,45],maxZoom:16}); else map.setView(d,15); map._fit=true; }
+  if(!map._fit){ fitAll(); map._fit=true; }
+  else if(follow && d && !map.getBounds().pad(-0.15).contains(d)) fitAll();
 }
-
+function paintSteps(r,came){
+  const i = r.status==="delivered"?4 : r.status==="accepted"?((came||0)>0.03?2:1) : 0;
+  const S=[["🧾","نێردرا",r.t0],["🛵","گەیەنەر وەریگرت",r.t1],["📍","لە ڕێگایە",""],["🏠","گەیشت",r.t2]];
+  const el=$("steps"); if(el) el.innerHTML=S.map((x,j)=>`<div class="st ${j<i?"done":j===i?"now":""}"><i>${j<i?"✓":x[0]}</i>${x[1]}<small>${esc(x[2]||"")}</small></div>`).join("");
+}
+function paintProg(r,came){
+  const p=$("prog"), info=$("tinfo"); if(!p||!info) return;
+  const has=r.status==="accepted"&&r.dlat!=null;
+  if(!has){ info.textContent=r.status==="accepted"?"📍 چاوەڕێی شوێنی گەیەنەر…":""; p.hidden=true; return; }
+  info.textContent = r.age>45 ? `⚠️ سیگناڵی گەیەنەر لاوازە · دوایین شوێن ${r.age<120?r.age+" چرکە":Math.round(r.age/60)+" خولەک"} لەمەوبەر` : `● زیندوو · نوێکرایەوە ${r.age} چرکە لەمەوبەر${r.acc?` · وردی ±${Math.round(r.acc)} م`:""}`;
+  if(r.clat==null){ p.hidden=true; return; }
+  const air=km(r.dlat,r.dlng,r.clat,r.clng), left=route?Math.min(route.km,air*2.5):air, total=came+left;
+  p.hidden=false;
+  $("barFill").style.width=(total>0?Math.min(100,came/total*100):0)+"%";
+  $("pCame").textContent=fmtKm(came); $("pLeft").textContent=fmtKm(left);
+  $("pEta").textContent=`~${route?route.min:Math.max(1,Math.ceil(left/25*60))} خولەک`;
+  const near=air<=0.3; $("near").hidden=!near;
+  if(near&&!nearDone){ nearDone=true; bell(); }
+}
+function paintRcpt(r){
+  if(rcptDone||!r.items) return; const el=$("rcpt"); if(!el) return; rcptDone=true;
+  el.innerHTML=`<div class="receipt"><div class="rh"><b>${esc(SHOP.shop_name||"Melano Fast Food")}</b><div style="font-size:.8rem;color:var(--muted)">داواکاری ${esc(r.num)}</div></div>
+    ${r.items.map(x=>`<div class="rr"><span>${esc(x.n)} × ${x.q}</span><span>${money(x.p*x.q)}</span></div>`).join("")}
+    <div class="rr sub"><span>گەیاندن</span><span>${r.fee?money(r.fee):"بێبەرامبەر"}</span></div>
+    <div class="rr rt"><span>کۆی گشتی</span><span>${money(r.total)}</span></div></div>`;
+}
 function startTrack(){
-  clearInterval(trackTimer);
+  clearInterval(trackTimer); resetTrack(); syncChip();
   const paint = async () => {
     if(!myNum){ clearInterval(trackTimer); return; }
     let r; try{ r=await rpc("track_order",{p_num:myNum,p_token:myTok}); }catch(e){ return; }
-    const el=$("trk"); if(!r) return;
+    if(!r) return;
     if(!r.ok){ endTrack(); return; }
-    if(!el) return;
-    if(r.status==="pending"){ el.innerHTML=`<div class="trk-row pend">🕐 داواکارییەکەت گەیشت · چاوەڕێی گەیەنەر...</div>`; hideMap(); }
-    else if(r.status==="accepted"){ el.innerHTML=`<div class="trk-row acc">🛵 گەیەنەرەکەت <b>${esc(r.driver||"")}</b> لە ڕێگایە بۆ لای تۆ!</div>`; showDriver(r); }
+    lastR=r; paintRcpt(r);
+    const el=$("trk"); if(!el) return;
+    const came=(r.slat!=null&&r.dlat!=null)?km(r.slat,r.slng,r.dlat,r.dlng):0;
+    paintSteps(r,came); paintProg(r,came);
+    if(r.status==="pending"){ el.innerHTML=`<div class="trk-row pend">🕐 داواکارییەکەت گەیشت · چاوەڕێی گەیەنەر...</div>`; if($("okOv").classList.contains("on")) showMap(r); }
+    else if(r.status==="accepted"){ el.innerHTML=`<div class="trk-row acc">🛵 گەیەنەرەکەت <b>${esc(r.driver||"")}</b> لە ڕێگایە بۆ لای تۆ!</div>`; if($("okOv").classList.contains("on")) showMap(r); }
     else if(r.status==="delivered"){ el.innerHTML=`<div class="trk-row del">✅ گەیەنرا! نۆشی گیان 🍔</div>`; endTrack(); }
-    else if(r.status==="cancelled"){ el.innerHTML=`<div class="trk-row can">❌ ببورە، داواکارییەکەت هەڵوەشێنرایەوە.</div>`; endTrack(); }
+    else if(r.status==="cancelled"){ el.innerHTML=`<div class="trk-row can">❌ ببورە، داواکارییەکەت هەڵوەشێنرایەوە.</div>`; $("steps").innerHTML=""; endTrack(); }
   };
-  paint(); trackTimer=setInterval(paint, 4000);
+  paint(); trackTimer=setInterval(paint, 3000);
 }
 // ئەگەر کڕیار پەڕەکەی داخست و گەڕایەوە، بەدواداچوون بەردەوام دەبێت
 (function resume(){
   let o=null; try{ o=JSON.parse(LS.get("mln_order")||"null"); }catch(e){}
   if(!o||!o.num||!o.tok){ LS.del("mln_order"); return; }
   myNum=o.num; myTok=o.tok;
-  $("okBody").innerHTML=`<div class="receipt"><div class="rh"><b>داواکاری ${esc(myNum)}</b></div></div><div class="trk" id="trk"></div>${TRK_MAP}<button class="btn ghost" id="newOrder">داخستن</button>`;
+  $("okBody").innerHTML=trackShell("");
   $("okOv").classList.add("on"); wireNewOrder(); startTrack();
 })();
 
