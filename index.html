@@ -158,6 +158,7 @@ body.orders .fab{display:none}
 <button class="chip" id="chip" hidden></button>
 <div class="overlay" id="optOv"><div class="sheet"><div class="sheet-h"><b id="optTitle"></b><button class="x" id="optX">✕</button></div><div id="optBody"></div></div></div>
 <div class="overlay" id="cartOv"><div class="sheet"><div class="sheet-h"><b>🛒 سەبەتەکەت</b><button class="x" id="cartX">✕</button></div><div id="cartBody"></div></div></div>
+<div class="overlay" id="authOv"><div class="sheet"><div class="sheet-h"><b id="authTitle"></b><button class="x" id="authX">✕</button></div><div id="authBody"></div></div></div>
 <div class="overlay" id="okOv"><div class="sheet"><div class="sheet-h"><b>داواکارییەکەت</b><button class="x" id="okX">✕</button></div><div id="okBody"></div></div></div>
 
 <script>
@@ -171,7 +172,7 @@ const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&
 const safeImg = u => /^https:\/\//i.test(u||"") ? u : "";
 const pic = it => safeImg(it.img) ? `<img src="${esc(it.img)}" alt="" loading="lazy">` : esc(it.e||"🍽️");
 const LS = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }, set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }, del(k){ try{ localStorage.removeItem(k); }catch(e){} } };
-// ===== چوونەژوورەوە بە Google (ئارەزوومەندانە) =====
+// ===== هەژماری کڕیار بە ئیمەیڵ و Google (ئارەزوومەندانە) =====
 const BASE = SUPA.replace("/rest/v1/rpc/","");
 let session=null, googleOn=false, justLogged=false;
 function jwtData(t){ try{ const b=t.split(".")[1].replace(/-/g,"+").replace(/_/g,"/"); return JSON.parse(decodeURIComponent(escape(atob(b)))); }catch(e){ return null; } }
@@ -185,8 +186,53 @@ function signOut(){ session=null; LS.del("mln_auth"); paintAcct(); }
 (function initAuth(){
   try{ session=JSON.parse(LS.get("mln_auth")||"null"); }catch(e){}
   const h=new URLSearchParams(location.hash.slice(1));
-  if(h.get("access_token")){ setSession(h.get("access_token"),h.get("refresh_token")); justLogged=true; history.replaceState(null,"",location.pathname+location.search); }
+  if(h.get("access_token")){ setSession(h.get("access_token"),h.get("refresh_token")); justLogged=true; if(h.get("type")==="recovery") setTimeout(()=>openAuth("recovery")); history.replaceState(null,"",location.pathname+location.search); }
 })();
+const SITE = () => location.href.split("#")[0].split("?")[0];
+async function authCall(path,method,body,token){
+  const r=await fetch(`${BASE}/auth/v1/${path}`,{method,headers:{"Content-Type":"application/json",apikey:KEY,...(token?{Authorization:"Bearer "+token}:{})},body:JSON.stringify(body)});
+  let j={}; try{ j=await r.json(); }catch(e){}
+  return {ok:r.ok,status:r.status,j};
+}
+const AUTH_ERR = {invalid_credentials:"ئیمەیڵ یان پاسوۆرد هەڵەیە.",email_not_confirmed:"سەرەتا ئیمەیڵەکەت پشتڕاست بکەرەوە. سەیری Inbox و Spam بکە.",user_already_exists:"ئەم ئیمەیڵە پێشتر تۆمار کراوە. بچۆ ژوورەوە.",email_exists:"ئەم ئیمەیڵە پێشتر تۆمار کراوە. بچۆ ژوورەوە.",weak_password:"پاسوۆرد لاوازە. پیت و ژمارە تێکەڵ بکە.",same_password:"پاسوۆردی نوێ دەبێت جیاواز بێت.",email_address_invalid:"ئیمەیڵەکە دروست نییە."};
+const authErrText = x => x.status===429 ? "هەوڵی زۆر درا. تکایە چەند خولەکێکی تر هەوڵ بدەرەوە." : AUTH_ERR[x.j.error_code||x.j.code] || "نەکرا. ئینتەرنێت بپشکنە و دووبارە هەوڵ بدەرەوە.";
+const AUTH_T = {login:"چوونەژوورەوە",signup:"هەژماری نوێ",forgot:"لەبیرچوونی پاسوۆرد",recovery:"پاسوۆردی نوێ"};
+function openAuth(mode){
+  $("authTitle").textContent=AUTH_T[mode];
+  const fld=(id,label,type,ac,ph)=>`<div class="field"><label for="${id}">${label}</label><input id="${id}" type="${type}" autocomplete="${ac}" dir="ltr" placeholder="${ph||""}"></div>`;
+  $("authBody").innerHTML=(mode==="signup"?`<div class="field"><label for="auName">ناوت</label><input id="auName" autocomplete="name" maxlength="60"></div>`:"")
+    +(mode!=="recovery"?fld("auMail","ئیمەیڵ","email","email","name@gmail.com"):"")
+    +(mode!=="forgot"?fld("auPass",mode==="login"?"پاسوۆرد":"پاسوۆرد (لانیکەم ٨ پیت)","password",mode==="login"?"current-password":"new-password"):"")
+    +`<p class="hint" id="auMsg" style="margin-bottom:8px"></p><button class="btn go" id="auGo">${{login:"چوونەژوورەوە",signup:"دروستکردنی هەژمار",forgot:"ناردنی لینک",recovery:"پاشەکەوتکردن"}[mode]}</button>`
+    +(mode==="login"?`<button class="btn ghost" id="auSw1">هەژمارم نییە، دروستی بکە</button><button class="btn ghost" id="auSw2">پاسوۆردم لەبیر چووە</button>`:"")
+    +(mode==="signup"||mode==="forgot"?`<button class="btn ghost" id="auSw1">هەژمارم هەیە، بچۆ ژوورەوە</button>`:"");
+  if(mode==="login"){ $("auSw1").onclick=()=>openAuth("signup"); $("auSw2").onclick=()=>openAuth("forgot"); }
+  if(mode==="signup"||mode==="forgot") $("auSw1").onclick=()=>openAuth("login");
+  $("auGo").onclick=()=>submitAuth(mode);
+  $("authOv").classList.add("on");
+}
+async function submitAuth(mode){
+  const msg=$("auMsg"), go=$("auGo"), say=(t,ok)=>{ msg.textContent=t; msg.style.color=ok?"var(--ok)":"var(--brand)"; };
+  const email=$("auMail")?$("auMail").value.trim():"", pass=$("auPass")?$("auPass").value:"";
+  if(mode!=="recovery"&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ say(AUTH_ERR.email_address_invalid); return; }
+  if(mode!=="forgot"&&!pass){ say("پاسوۆرد بنووسە."); return; }
+  if((mode==="signup"||mode==="recovery")&&pass.length<8){ say("پاسوۆرد دەبێت لانیکەم ٨ پیت بێت."); return; }
+  go.disabled=true;
+  let x; try{
+    if(mode==="login") x=await authCall("token?grant_type=password","POST",{email,password:pass});
+    else if(mode==="signup") x=await authCall(`signup?redirect_to=${encodeURIComponent(SITE())}`,"POST",{email,password:pass,data:{full_name:$("auName").value.trim()}});
+    else if(mode==="forgot") x=await authCall(`recover?redirect_to=${encodeURIComponent(SITE())}`,"POST",{email});
+    else x=await authCall("user","PUT",{password:pass},await authToken());
+  }catch(e){ x={ok:false,status:0,j:{}}; }
+  go.disabled=false;
+  if(!x.ok){ say(authErrText(x)); return; }
+  if(mode==="forgot"){ say("ئەگەر ئەم ئیمەیڵە هەژماری هەبێت، لینکێکی بۆ دەنێردرێت. سەیری Inbox و Spam بکە.",true); return; }
+  if(mode==="recovery"){ say("پاسوۆرد گۆڕدرا ✓",true); setTimeout(()=>$("authOv").classList.remove("on"),900); return; }
+  if(x.j.access_token){ setSession(x.j.access_token,x.j.refresh_token); $("authOv").classList.remove("on"); paintAcct(); loadOrders(); return; }
+  say("لینکێکی پشتڕاستکردنەوەمان بۆ ئیمەیڵەکەت نارد. سەیری Inbox و Spam بکە.",true);
+}
+$("authX").onclick=()=>$("authOv").classList.remove("on");
+$("authOv").onclick=e=>{ if(e.target.id==="authOv") $("authOv").classList.remove("on"); };
 async function authToken(){
   if(!session) return KEY;
   if(session.exp-Date.now()/1000>60) return session.at;
@@ -201,12 +247,19 @@ function googleLogin(){ location.href=`${BASE}/auth/v1/authorize?provider=google
 function paintAcct(){
   const el=$("acct"); if(!el) return;
   if(session){
-    el.innerHTML=`<div class="acct">${safeImg(session.pic)?`<img src="${esc(session.pic)}" alt="" referrerpolicy="no-referrer">`:`<span class="av">👤</span>`}<div class="an"><b>${esc(session.name||"هەژمارەکەم")}</b><small>${esc(session.email)}</small></div><button class="btn ghost" id="outBtn">دەرچوون</button></div>`;
+    el.innerHTML=`<div class="acct">${safeImg(session.pic)?`<img src="${esc(session.pic)}" alt="" referrerpolicy="no-referrer">`:`<span class="av">👤</span>`}<div class="an"><b>${esc(session.name||"هەژمارەکەم")}</b><small>${esc(session.email)}</small></div><button class="btn ghost" id="outBtn">دەرچوون</button></div><p class="hint"><a href="#" id="delAcct" style="color:var(--muted)">سڕینەوەی هەژمار</a></p>`;
     $("outBtn").onclick=()=>{ signOut(); loadOrders(); };
-  } else if(googleOn){
-    el.innerHTML=`<div class="acct col"><small>بچۆ ژوورەوە بۆ ئەوەی داواکارییەکانت لەسەر هەر مۆبایلێک ببینیت</small><button class="gbtn" id="gBtn"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.2C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.9 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.9c-.6 3-2.2 5.5-4.7 7.2l7.6 5.9c4.4-4.1 7.1-10.1 7.1-17.6z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.2C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.2 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.2C6.5 42.6 14.6 48 24 48z"/></svg>چوونەژوورەوە بە Google</button></div>`;
-    $("gBtn").onclick=googleLogin;
-  } else el.innerHTML="";
+    $("delAcct").onclick=async e=>{
+      e.preventDefault();
+      if(!confirm("هەژمارەکەت بە تەواوی دەسڕدرێتەوە و ناگەڕێتەوە. دڵنیایت؟")) return;
+      let r; try{ r=await rpc("delete_my_account"); }catch(x){ r=null; }
+      if(r&&r.ok){ signOut(); loadOrders(); alert("هەژمارەکەت سڕایەوە."); } else alert("نەکرا. دووبارە هەوڵ بدەرەوە.");
+    };
+  } else {
+    el.innerHTML=`<div class="acct col"><small>بچۆ ژوورەوە بۆ ئەوەی داواکارییەکانت لەسەر هەر مۆبایلێک ببینیت. بێ هەژماریش دەتوانیت داواکاری بنێریت.</small><button class="gbtn" id="mailBtn">✉️ چوونەژوورەوە بە ئیمەیڵ</button>${googleOn?`<button class="gbtn" id="gBtn"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.2C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.9 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.9c-.6 3-2.2 5.5-4.7 7.2l7.6 5.9c4.4-4.1 7.1-10.1 7.1-17.6z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.2C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.2 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.2C6.5 42.6 14.6 48 24 48z"/></svg>چوونەژوورەوە بە Google</button>`:""}</div>`;
+    $("mailBtn").onclick=()=>openAuth("login");
+    if(googleOn) $("gBtn").onclick=googleLogin;
+  }
 }
 fetch(`${BASE}/auth/v1/settings`,{headers:{apikey:KEY}}).then(r=>r.json()).then(s=>{ googleOn=!!(s.external&&s.external.google); paintAcct(); }).catch(()=>{});
 async function rpc(fn, body){
