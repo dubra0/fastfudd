@@ -223,14 +223,20 @@ let MENU = [], SHOP = {}, cart = {}, geo = null, activeCat = "all", myNum = null
 const allItems = () => MENU.flatMap(s=>s.items);
 const findItem = id => allItems().find(x=>String(x.id)===String(id));
 const flatFee = () => Math.max(0, parseInt(SHOP.delivery_fee,10) || 0);
-// گەیاندن بەپێی دووری: ئەگەر خاوەن ماوەکانی دانابێت، سێرڤەر هەمان حیساب دەکاتەوە
-const tiers = () => { try{ const t=JSON.parse(SHOP.delivery_tiers||"[]"); return t.slice().sort((a,b)=>a.km-b.km); }catch(e){ return []; } };
-const distOn = () => tiers().length>0 && !!SHOP.shop_lat && !!SHOP.shop_lng;
-const homeKm = () => geo ? km(+SHOP.shop_lat,+SHOP.shop_lng,geo.lat,geo.lng) : 0;
-const tierNow = () => tiers().find(t=>t.km>=homeKm());
-const tooFar = () => distOn() && !!geo && !tierNow();
-const fee = () => { if(!distOn()) return flatFee(); if(!geo) return 0; const t=tierNow(); return t?t.fee:0; };
-const feeTxt = () => distOn()&&!geo ? "دوای دیاریکردنی شوێن" : tooFar() ? "دەرەوەی سنوور" : (fee()?money(fee()):"بێبەرامبەر 🎁")+(distOn()?` · ${homeKm().toFixed(1)} کم`:"");
+// ناوچەکانی گەیاندن: بچووکترین ناوچەی شوێنی کڕیار؛ سێرڤەر هەمان حیساب دەکاتەوە
+const zones = () => { try{ return JSON.parse(SHOP.delivery_zones||"[]").map((z,i)=>({...z,i})).sort((a,b)=>a.r-b.r||a.i-b.i); }catch(e){ return []; } };
+const distOn = () => zones().length>0;
+const zoneNow = () => geo ? zones().find(z=>km(z.lat,z.lng,geo.lat,geo.lng)<=z.r) : null;
+const tooFar = () => distOn() && !!geo && !zoneNow();
+const fee = () => { if(!distOn()) return flatFee(); const z=zoneNow(); return z?z.fee:0; };
+const feeTxt = () => distOn()&&!geo ? "دوای دیاریکردنی شوێن" : tooFar() ? "دەرەوەی ناوچەکان" : (distOn()?zoneNow().n+" · ":"")+(fee()?money(fee()):"بێبەرامبەر 🎁");
+function paintFee(){
+  if(!$("sumFee")) return;
+  $("sumFee").textContent=feeTxt(); $("sumTotal").textContent=money(cartTotal());
+  const b=$("placeBtn"); if(b&&isOpen()) b.textContent="ناردنی داواکاری · "+money(cartTotal());
+  const s=$("locStatus");
+  if(s&&tooFar()){ s.textContent="⚠️ ئەم شوێنە لە ناوچەکانی گەیاندن نییە."; s.style.color="var(--brand)"; }
+}
 // ئەگەر کڕیار پێشتر ڕێگەی Location ـی داوە، کاتی کردنەوەی سەبەتە شوێن و نرخی گەیاندن خۆیان دێن
 let autoTried=false;
 async function autoLoc(){
@@ -238,13 +244,7 @@ async function autoLoc(){
   autoTried=true;
   try{ const p=await navigator.permissions.query({name:"geolocation"}); if(p.state==="granted"&&$("locBtn")&&!geo) getLoc(); }catch(e){}
 }
-function paintFee(){
-  if(!$("sumFee")) return;
-  $("sumFee").textContent=feeTxt(); $("sumTotal").textContent=money(cartTotal()); $("fabTotal").textContent=money(cartTotal());
-  const b=$("placeBtn"); if(b&&isOpen()) b.textContent="ناردنی داواکاری · "+money(cartTotal());
-  const s=$("locStatus");
-  if(s&&tooFar()){ s.textContent=`⚠️ ئەم شوێنە نزیکەی ${homeKm().toFixed(1)} کم لە چێشتخانەوە دوورە و لە دەرەوەی سنووری گەیاندنە.`; s.style.color="var(--brand)"; }
-}
+
 const isOpen = () => SHOP.is_open !== "0";
 // هەر هێڵێکی سەبەتە: {id, q, size, ex, note}
 const sizesOf = it => (it.o&&it.o.sizes)||[];
@@ -283,7 +283,7 @@ function paintHero(){
   const info = [];
   if(allDisc()) info.push(`🔥 ${allDisc()}% داشکاندن لەسەر هەموو مینیو`);
   if(SHOP.delivery_time) info.push(`🛵 گەیاندن ${esc(SHOP.delivery_time)} خولەک`);
-  info.push(distOn() ? "💵 نرخی گەیاندن بەپێی دووری" : fee() ? `💵 نرخی گەیاندن ${money(fee())}` : "🎁 گەیاندنی بێبەرامبەر");
+  info.push(distOn() ? "💵 نرخی گەیاندن بەپێی ناوچە" : fee() ? `💵 نرخی گەیاندن ${money(fee())}` : "🎁 گەیاندنی بێبەرامبەر");
   info.push(isOpen() ? "🟢 کراوەیە" : "🔴 داخراوە");
   $("shopInfo").innerHTML = info.map(x=>`<span>${x}</span>`).join("");
   $("closedBar").hidden = isOpen();
@@ -317,7 +317,7 @@ function update(){
   renderMenu();
   $("fab").hidden = cartCount()===0;
   $("fabCount").textContent = cartCount();
-  $("fabTotal").textContent = money(cartTotal());
+  $("fabTotal").textContent = money(subTotal());
   if($("cartOv").classList.contains("on")) renderCart();
 }
 // ===== هەڵبژاردنی قەبارە، زیادە و تێبینی =====
@@ -397,7 +397,7 @@ function locFail(denied){
   s.style.color="var(--brand)";
   showPick(manualCenter(),13);
 }
-const manualCenter = () => { try{ const c=JSON.parse(LS.get("mln_home")||"null"); if(c) return c; }catch(e){} return [36.19,44.01]; };
+const manualCenter = () => { try{ const c=JSON.parse(LS.get("mln_home")||"null"); if(c) return c; }catch(e){} const z=zones()[0]; return z?[z.lat,z.lng]:[36.5136,43.5977]; };
 function pickManual(){
   const s=$("locStatus"); s.textContent="🗺️ نەخشەکە نزیک بکەرەوە و لەسەر ماڵەکەت کلیک بکە"; s.style.color="";
   showPick(geo?[geo.lat,geo.lng]:manualCenter(), geo?18:13);
@@ -460,14 +460,14 @@ async function placeOrder(){
   if(!geo){ alert("تکایە شوێنی ماڵەکەت دیاری بکە بۆ ئەوەی گەیەنەر بیدۆزێتەوە."); pickManual(); $("pickBtn").scrollIntoView({behavior:"smooth",block:"start"}); return; }
   // GPS ـی لاواز گەیەنەر بۆ ماڵێکی هەڵە دەبات و نرخی گەیاندنیش هەڵە دەکات
   if(geo.acc>100){ alert(`وردی شوێنەکەت کەمە (±${Math.round(geo.acc)} م). تکایە 🏠 لەسەر نەخشە ڕابکێشە سەر دەرگای ماڵەکەت.`); $("pick").scrollIntoView({behavior:"smooth",block:"center"}); return; }
-  if(tooFar()){ alert("ببورە، ئەم شوێنە لە دەرەوەی سنووری گەیاندنە."); return; }
+  if(tooFar()){ alert("ببورە، ئەم شوێنە لە ناوچەکانی گەیاندن نییە."); return; }
   LS.set("mln_cust", JSON.stringify({name,phone,addr}));
   const btn=$("placeBtn"); btn.disabled=true; btn.textContent="چاوەڕێ بکە…";
   const items=Object.values(cart).map(l=>({id:l.id, q:l.q, size:l.size||null, extras:l.ex, note:l.note}));
   let res; try{ res=await rpc("place_order",{p_items:items,p_name:name,p_phone:phone,p_addr:addr,p_lat:geo?geo.lat:null,p_lng:geo?geo.lng:null,p_note:$("oNote").value.trim()||null}); }catch(e){ res=null; }
   if(!res||!res.ok){
     const err = res && res.error;
-    alert({closed:"ببورە، ئێستا داخراوین.",unavailable:"هەندێک لە خواردنەکان ئێستا نەماون. مینیو نوێ کرایەوە، تکایە سەبەتەکەت بپشکنە.",fields:"تکایە ناو، ژمارە و ناونیشان بنووسە.",busy:"داواکاری زۆرت ناردووە. تکایە چەند خولەکێکی تر هەوڵ بدەرەوە.",far:"ببورە، ئەم شوێنە لە دەرەوەی سنووری گەیاندنە.",location:"تکایە شوێنی ماڵەکەت دیاری بکە."}[err] || "نەنێردرا. ئینتەرنێت بپشکنە و دووبارە هەوڵ بدەرەوە.");
+    alert({closed:"ببورە، ئێستا داخراوین.",unavailable:"هەندێک لە خواردنەکان ئێستا نەماون. مینیو نوێ کرایەوە، تکایە سەبەتەکەت بپشکنە.",fields:"تکایە ناو، ژمارە و ناونیشان بنووسە.",busy:"داواکاری زۆرت ناردووە. تکایە چەند خولەکێکی تر هەوڵ بدەرەوە.",far:"ببورە، ئەم شوێنە لە ناوچەکانی گەیاندن نییە.",location:"تکایە شوێنی ماڵەکەت دیاری بکە."}[err] || "نەنێردرا. ئینتەرنێت بپشکنە و دووبارە هەوڵ بدەرەوە.");
     if(err==="closed"||err==="unavailable") await loadMenu(true);
     if($("placeBtn")) renderCart();
     return;

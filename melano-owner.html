@@ -80,6 +80,7 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
 .imgprev img{width:100%;height:100%;object-fit:cover}
 .imgbtns{display:grid;gap:7px;flex:1}.imgbtns .btn{text-align:center;position:relative;overflow:hidden}
 .imgbtns input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;padding:0;font-size:0}
+#zoneMap{height:340px;border-radius:14px;overflow:hidden;margin-bottom:8px;border:1px solid var(--line)}.orow .rr{width:74px;flex:none}.zlbl{background:#fff;color:#111;border:0;font-weight:800;font-family:Tahoma,Arial,sans-serif}.zpin{font-size:24px;line-height:1;text-align:center}.satb{width:36px;height:36px;border:0;border-radius:9px;background:#fff;font-size:18px;cursor:pointer}
 .orow{display:flex;gap:6px;align-items:center;margin-bottom:6px}.orow .pp{width:100px;flex:none;padding:9px;font-family:var(--fd)}.orow input{padding:9px}.orow button{flex:none}
 .note{color:var(--brand);font-size:.84rem;font-weight:700;display:block}
 .link{display:flex;gap:8px;align-items:center;margin-bottom:8px}.link input{direction:ltr;font-size:.82rem}
@@ -162,9 +163,8 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
         <div class="fld"><span class="fl">ناوی چێشتخانە</span><input id="sName"></div>
         <div class="fld"><span class="fl">دروشم</span><input id="sTag"></div>
         <div class="fld"><span class="fl">کاتی گەیاندن (خولەک)</span><input id="sTime" placeholder="30-45"></div>
-        <div class="fld"><span class="fl">نرخی گەیاندنی یەکسان (د.ع) · 0 = بێبەرامبەر · تەنها ئەگەر ماوەی دووری دانەنرابێت</span><input id="sFee" inputmode="numeric"></div>
-        <div class="fld"><span class="fl">📍 شوێنی چێشتخانە · لە Google Maps کۆپی بکە</span><div class="row"><div class="f"><input id="sLoc" dir="ltr" placeholder="36.191113, 44.009167"></div><button type="button" class="btn ghost sm" id="sLocBtn">📍 شوێنی ئێستام</button></div></div>
-        <div class="fld"><span class="fl">🛵 نرخی گەیاندن بەپێی دووری · تا چەند کم، و چەند دینار · دوورتر لە کۆتایی ماوە وەرناگیرێت</span><div id="sTiers"></div><button type="button" class="btn ghost sm" id="sAddTier">+ ماوە</button></div>
+        <div class="fld"><span class="fl">نرخی گەیاندنی یەکسان (د.ع) · 0 = بێبەرامبەر · تەنها ئەگەر هیچ ناوچەیەک دانەنرابێت</span><input id="sFee" inputmode="numeric"></div>
+        <div class="fld" style="grid-column:1/-1"><span class="fl">🗺️ ناوچەکانی گەیاندن · لەسەر نەخشە کلیک بکە بۆ ناوچەی نوێ، پاشان ناو، نرخ و نیوەتیرە (کم) بنووسە</span><div id="zoneMap" dir="ltr"></div><div id="zoneRows"></div><div class="fl">ئەگەر ناوچەیەک لەناو ناوچەیەکی تر بێت، بچووکترینیان کار دەکات. لە دەرەوەی ناوچەکان داواکاری وەرناگیرێت.</div></div>
         <div class="fld"><span class="fl">🔥 داشکاندن لەسەر هەموو مینیو (%) · 0 = نییە</span><input id="sDisc" type="number" inputmode="numeric" min="0" max="90" step="5"></div>
         <div class="fld"><span class="fl">واتسئەپ (ئارەزوومەندانە)</span><input id="sWa" inputmode="tel" dir="ltr" placeholder="9647501234567"></div>
       </div>
@@ -179,7 +179,7 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
       </div>
       <label style="display:flex;gap:8px;align-items:center;margin:10px 0;font-size:.85rem;color:var(--muted)"><input type="checkbox" id="npShow" style="width:auto"> پاسوۆردەکان نیشان بدە</label>
       <button class="btn" id="savePin" style="width:100%">گۆڕینی پاسوۆرد</button>
-      <p style="color:var(--muted);font-size:.8rem;margin:8px 0 0">دەتوانیت پیت، ژمارە و هێما بەکاربهێنیت (لانیکەم ٤ پیت). دوای گۆڕین، هەر ئامێرێکی تر کە چووبێتە ژوورەوە دەردەکرێت.</p>
+      <p style="color:var(--muted);font-size:.8rem;margin:8px 0 0">دەتوانیت پیت، ژمارە و هێما بەکاربهێنیت (لانیکەم ٨ پیت). دوای گۆڕین، هەر ئامێرێکی تر کە چووبێتە ژوورەوە دەردەکرێت.</p>
     </div>
     <div class="card">
       <h2>🔗 لینکەکان</h2>
@@ -239,7 +239,7 @@ const EMOJIS = ["🍔","🍕","🌯","🌭","🍟","🍗","🥙","🧆","🥗","
 async function rpc(fn, body){ const r=await fetch(SUPA+fn,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY,Authorization:"Bearer "+KEY},body:JSON.stringify(body||{})}); return r.json(); }
 function bell(){ try{ const A=window.AudioContext||window.webkitAudioContext; if(!A)return; const c=new A(); [988,1319,1760].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+i*0.14;o.type="sine";o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.3,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.6);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+0.6);});}catch(e){} }
 function toast(m, bad){ const t=$("toast"); t.textContent=m; t.className="toast on"+(bad?" bad":""); clearTimeout(toast.h); toast.h=setTimeout(()=>t.className="toast"+(bad?" bad":""),2400); }
-const ERR = {name:"تکایە ناو بنووسە.",price:"نرخ هەڵەیە.",pin:"پاسوۆرد دەبێت لانیکەم ٨ پیت یان ژمارە بێت.",dpin:"PIN دەبێت لانیکەم ٦ پیت یان ژمارە بێت.",old:"پاسوۆردی ئێستا هەڵەیە.",locked:"هەوڵی هەڵە زۆر بوو. ٣٠ خولەکی تر هەوڵ بدەرەوە.",fee:"نرخی گەیاندن دەبێت تەنها ژمارە بێت.",disc:"داشکاندن دەبێت لە نێوان 0 و 90 بێت.",tiers:"بۆ هەر ماوەیەک کم و نرخ بنووسە، و کم جیاواز بێت.",loc:"شوێنی چێشتخانە هەڵەیە. بۆ نموونە: 36.19, 44.01",range:"ماوەی ڕاپۆرت هەڵەیە. دەبێت لە ساڵێک کەمتر بێت.",cat:"بەشێک هەڵبژێرە.",exists:"گەیەنەرێک بەم ناوە هەیە."};
+const ERR = {name:"تکایە ناو بنووسە.",price:"نرخ هەڵەیە.",pin:"پاسوۆرد دەبێت لانیکەم ٨ پیت یان ژمارە بێت.",dpin:"PIN دەبێت لانیکەم ٦ پیت یان ژمارە بێت.",old:"پاسوۆردی ئێستا هەڵەیە.",locked:"هەوڵی هەڵە زۆر بوو. ٣٠ خولەکی تر هەوڵ بدەرەوە.",fee:"نرخی گەیاندن دەبێت تەنها ژمارە بێت.",disc:"داشکاندن دەبێت لە نێوان 0 و 90 بێت.",zones:"بۆ هەر ناوچەیەک ناو، نرخ و نیوەتیرە بنووسە.",range:"ماوەی ڕاپۆرت هەڵەیە. دەبێت لە ساڵێک کەمتر بێت.",cat:"بەشێک هەڵبژێرە.",exists:"گەیەنەرێک بەم ناوە هەیە."};
 async function act(fn, body, okMsg){
   let r; try{ r=await rpc(fn, Object.assign({p_pin:pin}, body)); }catch(e){ r=null; }
   if(r&&r.ok){ if(okMsg)toast(okMsg); return r; }
@@ -275,6 +275,7 @@ function showTab(t){
   ["orders","menu","drivers","report","settings"].forEach(k=>$("t-"+k).hidden=k!==t);
   if(t==="report"&&!$("repFrom").value) reportRange("6");
   if(t==="menu"||t==="settings") loadMenu();
+  if(t==="settings") ensureZoneMap();
   try{ sessionStorage.setItem("mln_tab",t); }catch(e){}
 }
 
@@ -572,26 +573,55 @@ function paintSettings(){
   $("sOpen").checked=open; $("openTxt").textContent=open?"🟢 کراوەیە":"🔴 داخراوە";
   const act2=document.activeElement;
   [["sName","shop_name"],["sTag","tagline"],["sTime","delivery_time"],["sFee","delivery_fee"],["sDisc","discount_all"],["sWa","whatsapp"]].forEach(([id,k])=>{ if($(id)!==act2) $(id).value=s[k]||""; });
-  if($("sLoc")!==act2) $("sLoc").value=s.shop_lat&&s.shop_lng?`${s.shop_lat}, ${s.shop_lng}`:"";
-  if(!$("sTiers").contains(act2)){ $("sTiers").innerHTML=""; let t=[]; try{ t=JSON.parse(s.delivery_tiers||"[]"); }catch(e){} t.forEach(x=>tierRow(x.km,x.fee)); }
+  if(!zonesDirty){ try{ ZONES=JSON.parse(s.delivery_zones||"[]"); }catch(e){ ZONES=[]; } paintZones(); }
 }
-function tierRow(k,f){
-  const r=document.createElement("div"); r.className="orow";
-  r.innerHTML=`<input class="nn" type="number" inputmode="decimal" min="0.1" step="0.5" placeholder="تا چەند کم" value="${k==null?"":esc(k)}"><input class="pp" type="number" inputmode="numeric" min="0" step="250" placeholder="نرخ (د.ع)" value="${f==null?"":esc(f)}"><button type="button" class="btn ghost sm red">✕</button>`;
-  r.querySelector("button").onclick=()=>r.remove();
-  $("sTiers").appendChild(r);
+// ===== ناوچەکانی گەیاندن: خاوەن لەسەر نەخشە دیاریان دەکات =====
+const BARDARASH=[36.5136,43.5977];
+let ZONES=[], zonesDirty=false, zoneMap=null, zoneLayer=null, leaflet=null;
+function loadLeaflet(){
+  if(leaflet) return leaflet;
+  leaflet=new Promise((res,rej)=>{
+    const l=document.createElement("link"); l.rel="stylesheet"; l.href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"; l.integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb"; l.crossOrigin="anonymous"; document.head.appendChild(l);
+    const s=document.createElement("script"); s.src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"; s.integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO"; s.crossOrigin="anonymous";
+    s.onload=()=>res(window.L); s.onerror=()=>{ leaflet=null; rej(); }; document.head.appendChild(s);
+  });
+  return leaflet;
 }
-function readTiers(){
-  const out=[]; let bad=false;
-  $("sTiers").querySelectorAll(".orow").forEach(r=>{ const k=Math.round(parseFloat(r.querySelector(".nn").value)*100)/100, f=parseInt(r.querySelector(".pp").value,10); if(!(k>0&&k<1000)||isNaN(f)||f<0||f>9999999) bad=true; else out.push({km:k,fee:f}); });
-  if(bad||out.length>10||new Set(out.map(x=>x.km)).size!==out.length) return null;
-  return out.sort((a,b)=>a.km-b.km);
+function ensureZoneMap(){
+  loadLeaflet().then(L=>{
+    if(zoneMap){ zoneMap.invalidateSize(); return; }
+    zoneMap=L.map("zoneMap").setView(ZONES[0]?[ZONES[0].lat,ZONES[0].lng]:BARDARASH,12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(zoneMap);
+    const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:20,maxNativeZoom:19,attribution:"© Esri"});
+    const C=L.Control.extend({options:{position:"topright"},onAdd(){ const b=L.DomUtil.create("button","satb"); b.type="button"; b.textContent="🛰️"; L.DomEvent.disableClickPropagation(b); b.onclick=()=>{ if(zoneMap.hasLayer(sat)){ zoneMap.removeLayer(sat); b.textContent="🛰️"; } else { sat.addTo(zoneMap); b.textContent="🗺️"; } }; return b; }});
+    zoneMap.addControl(new C());
+    zoneLayer=L.layerGroup().addTo(zoneMap);
+    zoneMap.on("click",e=>{ ZONES.push({n:"",fee:0,r:1,lat:+e.latlng.lat.toFixed(6),lng:+e.latlng.lng.toFixed(6)}); zonesDirty=true; paintZones(); const rows=$("zoneRows").querySelectorAll(".nn"); rows[rows.length-1].focus(); });
+    drawZones();
+    if(ZONES.length) zoneMap.fitBounds(L.latLngBounds(ZONES.map(z=>[z.lat,z.lng])).pad(0.4),{maxZoom:14});
+  }).catch(()=>toast("نەخشە بار نەبوو. ئینتەرنێت بپشکنە.",true));
 }
-$("sAddTier").onclick=()=>tierRow();
-$("sLocBtn").onclick=()=>{
-  if(!navigator.geolocation){ toast(ERR.loc,true); return; }
-  navigator.geolocation.getCurrentPosition(p=>{ $("sLoc").value=`${p.coords.latitude.toFixed(6)}, ${p.coords.longitude.toFixed(6)}`; toast("لەسەر پاشەکەوتکردن دابگرە."); },()=>toast("شوێن نەدۆزرایەوە. لە Google Maps کۆپی بکە.",true),{enableHighAccuracy:true,timeout:15000});
-};
+function drawZones(){
+  if(!zoneLayer) return; zoneLayer.clearLayers(); const L=window.L;
+  ZONES.forEach(z=>{
+    const c=L.circle([z.lat,z.lng],{radius:z.r*1000,color:"#ff7a18",weight:2,fillOpacity:.12}).addTo(zoneLayer);
+    c.on("click",e=>L.DomEvent.stopPropagation(e));
+    const m=L.marker([z.lat,z.lng],{draggable:true,icon:L.divIcon({className:"zpin",html:"📍",iconSize:[28,28],iconAnchor:[14,26]})}).addTo(zoneLayer);
+    m.bindTooltip(`${esc(z.n||"ناوچەی نوێ")} · ${nf(z.fee)}`,{permanent:true,direction:"top",offset:[0,-24],className:"zlbl"});
+    m.on("dragend",()=>{ const p=m.getLatLng(); z.lat=+p.lat.toFixed(6); z.lng=+p.lng.toFixed(6); zonesDirty=true; drawZones(); });
+  });
+}
+function paintZones(){
+  $("zoneRows").innerHTML=ZONES.map((z,i)=>`<div class="orow"><input class="nn" data-zi="${i}" data-k="n" maxlength="40" placeholder="ناو: زەنگەنان" value="${esc(z.n)}"><input class="pp" data-zi="${i}" data-k="fee" type="number" inputmode="numeric" min="0" step="250" placeholder="نرخ" value="${esc(z.fee)}"><input class="rr" data-zi="${i}" data-k="r" type="number" inputmode="decimal" min="0.05" step="0.1" placeholder="کم" value="${esc(z.r)}"><button type="button" class="btn ghost sm red" data-zdel="${i}">✕</button></div>`).join("");
+  $("zoneRows").querySelectorAll("[data-zi]").forEach(x=>x.oninput=()=>{ const z=ZONES[+x.dataset.zi], k=x.dataset.k; z[k]=k==="n"?x.value:parseFloat(x.value); zonesDirty=true; drawZones(); });
+  $("zoneRows").querySelectorAll("[data-zdel]").forEach(b=>b.onclick=()=>{ ZONES.splice(+b.dataset.zdel,1); zonesDirty=true; paintZones(); });
+  drawZones();
+}
+function readZones(){
+  const out=[]; let bad=ZONES.length>40;
+  ZONES.forEach(z=>{ const n=String(z.n||"").trim(), fee=Math.round(z.fee), r=Math.round(z.r*100)/100; if(!n||n.length>40||!(fee>=0&&fee<=9999999)||!(r>=0.05&&r<=100)) bad=true; else out.push({n,fee,r,lat:z.lat,lng:z.lng}); });
+  return bad||JSON.stringify(out).length>4000?null:out;
+}
 $("sOpen").onchange=async()=>{
   const v=$("sOpen").checked?"1":"0";
   if(await act("owner_set_settings",{p_data:{is_open:v}}, v==="1"?"چێشتخانە کرایەوە 🟢":"چێشتخانە داخرا 🔴")) loadMenu(); else $("sOpen").checked=!$("sOpen").checked;
@@ -601,12 +631,10 @@ $("saveShop").onclick=async()=>{
   if(!/^[0-9]{1,7}$/.test(fee)){ toast(ERR.fee,true); return; }
   const disc=$("sDisc").value.trim()||"0";
   if(!/^[0-9]{1,2}$/.test(disc)||+disc>90){ toast(ERR.disc,true); return; }
-  const tr=readTiers(); if(!tr){ toast(ERR.tiers,true); return; }
-  const lm=$("sLoc").value.trim().match(/^(-?\d{1,2}(?:\.\d{1,8})?)\s*[,\s]\s*(-?\d{1,3}(?:\.\d{1,8})?)$/);
-  if(($("sLoc").value.trim()&&!lm)||(tr.length&&!lm)||(lm&&(Math.abs(+lm[1])>90||Math.abs(+lm[2])>180))){ toast(ERR.loc,true); return; }
+  const zs=readZones(); if(!zs){ toast(ERR.zones,true); return; }
   $("saveShop").disabled=true;
-  const ok=await act("owner_set_settings",{p_data:{shop_name:$("sName").value.trim()||"Melano Fast Food",tagline:$("sTag").value.trim(),delivery_time:$("sTime").value.trim(),delivery_fee:fee,discount_all:disc,delivery_tiers:JSON.stringify(tr),shop_lat:lm?lm[1]:"",shop_lng:lm?lm[2]:"",whatsapp:$("sWa").value.replace(/\D/g,"")}},"پاشەکەوت کرا ✓");
-  $("saveShop").disabled=false; if(ok) loadMenu();
+  const ok=await act("owner_set_settings",{p_data:{shop_name:$("sName").value.trim()||"Melano Fast Food",tagline:$("sTag").value.trim(),delivery_time:$("sTime").value.trim(),delivery_fee:fee,discount_all:disc,delivery_zones:JSON.stringify(zs),whatsapp:$("sWa").value.replace(/\D/g,"")}},"پاشەکەوت کرا ✓");
+  $("saveShop").disabled=false; if(ok){ zonesDirty=false; loadMenu(); }
 };
 $("npShow").onchange=()=>["np0","np1","np2"].forEach(id=>$(id).type=$("npShow").checked?"text":"password");
 $("savePin").onclick=async()=>{
