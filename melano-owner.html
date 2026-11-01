@@ -100,8 +100,20 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
     <button data-t="orders" aria-pressed="true">📋 داواکاری <span class="bdg" id="pendBdg" hidden></span></button>
     <button data-t="menu" aria-pressed="false">🍔 مینیو و نرخ</button>
     <button data-t="drivers" aria-pressed="false">🛵 گەیەنەر</button>
+    <button data-t="report" aria-pressed="false">📊 ڕاپۆرت</button>
     <button data-t="settings" aria-pressed="false">⚙️ ڕێکخستن</button>
   </nav>
+
+  <section id="t-report" hidden>
+    <div class="card">
+      <div class="row" style="margin-bottom:10px"><button class="btn ghost sm" data-rp="0">ئەمڕۆ</button><button class="btn ghost sm" data-rp="6">٧ ڕۆژ</button><button class="btn ghost sm" data-rp="29">٣٠ ڕۆژ</button><button class="btn ghost sm" data-rp="month">ئەم مانگە</button></div>
+      <div class="row" style="align-items:end"><div class="f"><label for="repFrom">لە</label><input id="repFrom" type="date"></div><div class="f"><label for="repTo">بۆ</label><input id="repTo" type="date"></div><button class="btn ghost" id="repGo">پیشاندان</button></div>
+    </div>
+    <div class="stats" id="repStats"></div>
+    <div class="card"><h2>🏆 پڕفرۆشترین خواردن</h2><div class="tbl"><table><thead><tr><th>خواردن</th><th>دانە</th><th>فرۆشتن</th></tr></thead><tbody id="repTop"></tbody></table></div></div>
+    <div class="card"><h2>📅 ڕۆژانە</h2><div class="tbl"><table><thead><tr><th>ڕۆژ</th><th>داواکاری</th><th>فرۆشتن</th></tr></thead><tbody id="repDays"></tbody></table></div></div>
+    <div class="card"><h2>🛵 گەیەنەرەکان</h2><div class="tbl"><table><thead><tr><th>گەیەنەر</th><th>داواکاری</th><th>کۆی پارە</th></tr></thead><tbody id="repDrv"></tbody></table></div></div>
+  </section>
 
   <section id="t-orders">
     <div class="big-sw"><div><b>🖨️ چاپی خۆکار</b><div class="fl" id="apTxt">کاتێک داواکاری نوێ دێت، خۆی چاپ دەکرێت. ئەم پەڕەیە دەبێت کراوە بێت.</div></div><label class="sw"><input type="checkbox" id="apOn"><i></i></label></div>
@@ -150,7 +162,10 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
         <div class="fld"><span class="fl">ناوی چێشتخانە</span><input id="sName"></div>
         <div class="fld"><span class="fl">دروشم</span><input id="sTag"></div>
         <div class="fld"><span class="fl">کاتی گەیاندن (خولەک)</span><input id="sTime" placeholder="30-45"></div>
-        <div class="fld"><span class="fl">نرخی گەیاندن (د.ع) · 0 = بێبەرامبەر</span><input id="sFee" inputmode="numeric"></div>
+        <div class="fld"><span class="fl">نرخی گەیاندنی یەکسان (د.ع) · 0 = بێبەرامبەر · تەنها ئەگەر ماوەی دووری دانەنرابێت</span><input id="sFee" inputmode="numeric"></div>
+        <div class="fld"><span class="fl">📍 شوێنی چێشتخانە · لە Google Maps کۆپی بکە</span><div class="row"><div class="f"><input id="sLoc" dir="ltr" placeholder="36.191113, 44.009167"></div><button type="button" class="btn ghost sm" id="sLocBtn">📍 شوێنی ئێستام</button></div></div>
+        <div class="fld"><span class="fl">🛵 نرخی گەیاندن بەپێی دووری · تا چەند کم، و چەند دینار · دوورتر لە کۆتایی ماوە وەرناگیرێت</span><div id="sTiers"></div><button type="button" class="btn ghost sm" id="sAddTier">+ ماوە</button></div>
+        <div class="fld"><span class="fl">🔥 داشکاندن لەسەر هەموو مینیو (%) · 0 = نییە</span><input id="sDisc" type="number" inputmode="numeric" min="0" max="90" step="5"></div>
         <div class="fld"><span class="fl">واتسئەپ (ئارەزوومەندانە)</span><input id="sWa" inputmode="tel" dir="ltr" placeholder="9647501234567"></div>
       </div>
       <button class="btn" id="saveShop" style="margin-top:14px;width:100%">پاشەکەوتکردن</button>
@@ -180,6 +195,7 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
   <div class="fld"><span class="fl">ناو</span><input id="imName"></div>
   <div class="fld"><span class="fl">وەسف</span><input id="imDesc" placeholder="بۆ نموونە: لەگەڵ پەنیر و سۆس"></div>
   <div class="fld"><span class="fl">نرخ (د.ع)</span><input id="imPrice" type="number" inputmode="numeric" min="0" step="250"></div>
+  <div class="fld"><span class="fl">داشکاندن (%) · 0 = نییە</span><input id="imDisc" type="number" inputmode="numeric" min="0" max="90" step="5"></div>
   <div class="fld"><span class="fl">ئایکۆن</span><input id="imEmoji"><div class="emo" id="emoPick"></div></div>
   <div class="fld"><span class="fl">وێنەی خواردن</span>
     <div class="imgbox">
@@ -223,7 +239,7 @@ const EMOJIS = ["🍔","🍕","🌯","🌭","🍟","🍗","🥙","🧆","🥗","
 async function rpc(fn, body){ const r=await fetch(SUPA+fn,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY,Authorization:"Bearer "+KEY},body:JSON.stringify(body||{})}); return r.json(); }
 function bell(){ try{ const A=window.AudioContext||window.webkitAudioContext; if(!A)return; const c=new A(); [988,1319,1760].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+i*0.14;o.type="sine";o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.3,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.6);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+0.6);});}catch(e){} }
 function toast(m, bad){ const t=$("toast"); t.textContent=m; t.className="toast on"+(bad?" bad":""); clearTimeout(toast.h); toast.h=setTimeout(()=>t.className="toast"+(bad?" bad":""),2400); }
-const ERR = {name:"تکایە ناو بنووسە.",price:"نرخ هەڵەیە.",pin:"پاسوۆرد دەبێت لانیکەم ٨ پیت یان ژمارە بێت.",dpin:"PIN دەبێت لانیکەم ٦ پیت یان ژمارە بێت.",old:"پاسوۆردی ئێستا هەڵەیە.",locked:"هەوڵی هەڵە زۆر بوو. ٣٠ خولەکی تر هەوڵ بدەرەوە.",fee:"نرخی گەیاندن دەبێت تەنها ژمارە بێت.",cat:"بەشێک هەڵبژێرە.",exists:"گەیەنەرێک بەم ناوە هەیە."};
+const ERR = {name:"تکایە ناو بنووسە.",price:"نرخ هەڵەیە.",pin:"پاسوۆرد دەبێت لانیکەم ٨ پیت یان ژمارە بێت.",dpin:"PIN دەبێت لانیکەم ٦ پیت یان ژمارە بێت.",old:"پاسوۆردی ئێستا هەڵەیە.",locked:"هەوڵی هەڵە زۆر بوو. ٣٠ خولەکی تر هەوڵ بدەرەوە.",fee:"نرخی گەیاندن دەبێت تەنها ژمارە بێت.",disc:"داشکاندن دەبێت لە نێوان 0 و 90 بێت.",tiers:"بۆ هەر ماوەیەک کم و نرخ بنووسە، و کم جیاواز بێت.",loc:"شوێنی چێشتخانە هەڵەیە. بۆ نموونە: 36.19, 44.01",range:"ماوەی ڕاپۆرت هەڵەیە. دەبێت لە ساڵێک کەمتر بێت.",cat:"بەشێک هەڵبژێرە.",exists:"گەیەنەرێک بەم ناوە هەیە."};
 async function act(fn, body, okMsg){
   let r; try{ r=await rpc(fn, Object.assign({p_pin:pin}, body)); }catch(e){ r=null; }
   if(r&&r.ok){ if(okMsg)toast(okMsg); return r; }
@@ -256,7 +272,8 @@ document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>showTab(b.dat
 function showTab(t){
   if(!$("t-"+t)) t="orders";
   document.querySelectorAll(".tabs button").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.t===t)));
-  ["orders","menu","drivers","settings"].forEach(k=>$("t-"+k).hidden=k!==t);
+  ["orders","menu","drivers","report","settings"].forEach(k=>$("t-"+k).hidden=k!==t);
+  if(t==="report"&&!$("repFrom").value) reportRange("6");
   if(t==="menu"||t==="settings") loadMenu();
   try{ sessionStorage.setItem("mln_tab",t); }catch(e){}
 }
@@ -316,6 +333,32 @@ $("apOn").onchange=()=>{
   if(autoPrint){ const s=printedSet(); lastOrders.forEach(o=>s.add(o.num)); savePrinted(s); toast("چاپی خۆکار چالاکە 🖨️"); }
 };
 
+// ===== ڕاپۆرتی فرۆشتن: تەنها کاتی کردنەوەی تابەکە دێت، نەک لەگەڵ هەر نوێکردنەوەیەک =====
+const baghdadDay = () => new Date().toLocaleDateString("en-CA",{timeZone:"Asia/Baghdad"});
+const dayMinus = (d,n) => new Date(Date.parse(d+"T00:00:00Z")-n*864e5).toISOString().slice(0,10);
+function reportRange(k){
+  const to=baghdadDay();
+  $("repFrom").value = k==="month" ? to.slice(0,8)+"01" : dayMinus(to,+k);
+  $("repTo").value = to; loadReport();
+}
+async function loadReport(){
+  const r=await act("owner_report",{p_from:$("repFrom").value,p_to:$("repTo").value}); if(!r) return;
+  const s=r.summary||{}, row=(a,b,c)=>`<tr><td>${a}</td><td class="nw"><b>${b}</b></td><td class="nw">${c}</td></tr>`;
+  const none=`<tr><td colspan="3" class="empty">لەم ماوەیەدا فرۆشتن نییە.</td></tr>`;
+  $("repStats").innerHTML=`
+    <div class="stat rev"><span>کۆی فرۆشتن</span><b>${money(s.revenue)}</b></div>
+    <div class="stat"><span>داواکاری گەیەنراو</span><b>${nf(s.orders)}</b></div>
+    <div class="stat"><span>تێکڕای هەر داواکارییەک</span><b>${money(s.orders?Math.round(s.revenue/s.orders):0)}</b></div>
+    <div class="stat"><span>بێ نرخی گەیاندن</span><b>${money((s.revenue||0)-(s.fees||0))}</b></div>
+    <div class="stat"><span>هەڵوەشێنراوە</span><b>${nf(s.cancelled)}</b></div>
+    <div class="stat pend"><span>هێشتا تەواو نەبووە</span><b>${nf(s.open)}</b></div>`;
+  $("repTop").innerHTML=(r.top||[]).map(x=>row(esc(x.n),nf(x.q),money(x.amt))).join("")||none;
+  $("repDays").innerHTML=(r.daily||[]).map(x=>row(esc(x.d),nf(x.orders),money(x.revenue))).join("")||none;
+  $("repDrv").innerHTML=(r.drivers||[]).map(x=>row(esc(x.n),nf(x.orders),money(x.amt))).join("")||none;
+}
+document.querySelectorAll("[data-rp]").forEach(b=>b.onclick=()=>reportRange(b.dataset.rp));
+$("repGo").onclick=()=>{ if($("repFrom").value&&$("repTo").value) loadReport(); };
+
 // ===== داواکاری و ئامار =====
 async function loop(){
   let r; try{ r=await rpc("owner_data",{p_pin:pin}); }catch(e){ return; }
@@ -370,14 +413,14 @@ async function loadMenu(){
   MENU=r.cats||[]; SHOP=r.shop||{}; paintMenu(); paintSettings();
 }
 const findIt = id => { for(const c of MENU) for(const it of c.items) if(String(it.id)===String(id)) return Object.assign({cat:c.id}, it); return null; };
-const saveItem = (it, okMsg) => act("owner_save_item",{p_id:it.id||null,p_cat:+it.cat,p_name:it.n,p_desc:it.d||"",p_price:+it.p,p_emoji:it.e||"🍽️",p_img:it.img||"",p_avail:!!it.a,p_options:it.o||null}, okMsg);
+const saveItem = (it, okMsg) => act("owner_save_item",{p_id:it.id||null,p_cat:+it.cat,p_name:it.n,p_desc:it.d||"",p_price:+it.p,p_emoji:it.e||"🍽️",p_img:it.img||"",p_avail:!!it.a,p_options:it.o||null,p_discount:+(it.dc||0)}, okMsg);
 
 function paintMenu(){
   $("menuList").innerHTML = MENU.length ? MENU.map(c=>`<div class="card">
     <div class="ch"><h2>${esc(c.icon)} ${esc(c.name)} <small>(${c.items.length})</small></h2><div class="acts"><button class="btn ghost sm" data-ecat="${c.id}">✏️</button><button class="btn ghost sm red" data-dcat="${c.id}">🗑️</button></div></div>
     ${c.items.map(it=>`<div class="mi ${it.a?"":"off"}">
       <div class="pic">${pic(it)}</div>
-      <div class="mn"><b>${esc(it.n)}</b><small>${esc(it.d)}</small></div>
+      <div class="mn"><b>${esc(it.n)}${it.dc?` <span style="color:#e11d48">🔥 ${nf(it.dc)}%</span>`:""}</b><small>${esc(it.d)}</small></div>
       <div class="pr"><input type="number" inputmode="numeric" min="0" step="250" value="${it.p}" data-price="${it.id}" aria-label="نرخ"><span>د.ع</span></div>
       <label class="sw" title="بەردەستە / نەماوە"><input type="checkbox" data-av="${it.id}" ${it.a?"checked":""}><i></i></label>
       <button class="btn ghost sm" data-eit="${it.id}">✏️</button>
@@ -433,6 +476,7 @@ function openItem(it, catId){
   $("imName").value = it ? it.n : "";
   $("imDesc").value = it ? it.d : "";
   $("imPrice").value = it ? it.p : "";
+  $("imDisc").value = it&&it.dc ? it.dc : 0;
   $("imEmoji").value = it ? it.e : ((MENU.find(c=>c.id===catId)||{}).icon || "🍽️");
   $("imImg").value = it ? it.img : "";
   $("imFile").value = ""; paintPrev();
@@ -504,7 +548,9 @@ $("imSave").onclick=async()=>{
   const sizes=readOpts("imSizes"), extras=readOpts("imExtras");
   if(!sizes||!extras){ toast("بۆ هەر قەبارە و زیادەیەک ناو و نرخ بنووسە.",true); return; }
   $("imSave").disabled=true;
-  const ok=await saveItem({id:editItem,cat:$("imCat").value,n:$("imName").value.trim(),d:$("imDesc").value.trim(),p:p,e:$("imEmoji").value.trim(),img:img,a:$("imAvail").checked,o:{sizes,extras}}, editItem?"پاشەکەوت کرا ✓":"خواردن زیاد کرا ✓");
+  const dc=parseInt($("imDisc").value||"0",10);
+  if(isNaN(dc)||dc<0||dc>90){ toast(ERR.disc,true); $("imSave").disabled=false; return; }
+  const ok=await saveItem({id:editItem,cat:$("imCat").value,n:$("imName").value.trim(),d:$("imDesc").value.trim(),p:p,dc:dc,e:$("imEmoji").value.trim(),img:img,a:$("imAvail").checked,o:{sizes,extras}}, editItem?"پاشەکەوت کرا ✓":"خواردن زیاد کرا ✓");
   $("imSave").disabled=false;
   if(ok){ $("itemOv").classList.remove("on"); loadMenu(); }
 };
@@ -525,8 +571,27 @@ function paintSettings(){
   const s=SHOP||{}, open=s.is_open!=="0";
   $("sOpen").checked=open; $("openTxt").textContent=open?"🟢 کراوەیە":"🔴 داخراوە";
   const act2=document.activeElement;
-  [["sName","shop_name"],["sTag","tagline"],["sTime","delivery_time"],["sFee","delivery_fee"],["sWa","whatsapp"]].forEach(([id,k])=>{ if($(id)!==act2) $(id).value=s[k]||""; });
+  [["sName","shop_name"],["sTag","tagline"],["sTime","delivery_time"],["sFee","delivery_fee"],["sDisc","discount_all"],["sWa","whatsapp"]].forEach(([id,k])=>{ if($(id)!==act2) $(id).value=s[k]||""; });
+  if($("sLoc")!==act2) $("sLoc").value=s.shop_lat&&s.shop_lng?`${s.shop_lat}, ${s.shop_lng}`:"";
+  if(!$("sTiers").contains(act2)){ $("sTiers").innerHTML=""; let t=[]; try{ t=JSON.parse(s.delivery_tiers||"[]"); }catch(e){} t.forEach(x=>tierRow(x.km,x.fee)); }
 }
+function tierRow(k,f){
+  const r=document.createElement("div"); r.className="orow";
+  r.innerHTML=`<input class="nn" type="number" inputmode="decimal" min="0.1" step="0.5" placeholder="تا چەند کم" value="${k==null?"":esc(k)}"><input class="pp" type="number" inputmode="numeric" min="0" step="250" placeholder="نرخ (د.ع)" value="${f==null?"":esc(f)}"><button type="button" class="btn ghost sm red">✕</button>`;
+  r.querySelector("button").onclick=()=>r.remove();
+  $("sTiers").appendChild(r);
+}
+function readTiers(){
+  const out=[]; let bad=false;
+  $("sTiers").querySelectorAll(".orow").forEach(r=>{ const k=Math.round(parseFloat(r.querySelector(".nn").value)*100)/100, f=parseInt(r.querySelector(".pp").value,10); if(!(k>0&&k<1000)||isNaN(f)||f<0||f>9999999) bad=true; else out.push({km:k,fee:f}); });
+  if(bad||out.length>10||new Set(out.map(x=>x.km)).size!==out.length) return null;
+  return out.sort((a,b)=>a.km-b.km);
+}
+$("sAddTier").onclick=()=>tierRow();
+$("sLocBtn").onclick=()=>{
+  if(!navigator.geolocation){ toast(ERR.loc,true); return; }
+  navigator.geolocation.getCurrentPosition(p=>{ $("sLoc").value=`${p.coords.latitude.toFixed(6)}, ${p.coords.longitude.toFixed(6)}`; toast("لەسەر پاشەکەوتکردن دابگرە."); },()=>toast("شوێن نەدۆزرایەوە. لە Google Maps کۆپی بکە.",true),{enableHighAccuracy:true,timeout:15000});
+};
 $("sOpen").onchange=async()=>{
   const v=$("sOpen").checked?"1":"0";
   if(await act("owner_set_settings",{p_data:{is_open:v}}, v==="1"?"چێشتخانە کرایەوە 🟢":"چێشتخانە داخرا 🔴")) loadMenu(); else $("sOpen").checked=!$("sOpen").checked;
@@ -534,8 +599,13 @@ $("sOpen").onchange=async()=>{
 $("saveShop").onclick=async()=>{
   const fee=$("sFee").value.trim()||"0";
   if(!/^[0-9]{1,7}$/.test(fee)){ toast(ERR.fee,true); return; }
+  const disc=$("sDisc").value.trim()||"0";
+  if(!/^[0-9]{1,2}$/.test(disc)||+disc>90){ toast(ERR.disc,true); return; }
+  const tr=readTiers(); if(!tr){ toast(ERR.tiers,true); return; }
+  const lm=$("sLoc").value.trim().match(/^(-?\d{1,2}(?:\.\d{1,8})?)\s*[,\s]\s*(-?\d{1,3}(?:\.\d{1,8})?)$/);
+  if(($("sLoc").value.trim()&&!lm)||(tr.length&&!lm)||(lm&&(Math.abs(+lm[1])>90||Math.abs(+lm[2])>180))){ toast(ERR.loc,true); return; }
   $("saveShop").disabled=true;
-  const ok=await act("owner_set_settings",{p_data:{shop_name:$("sName").value.trim()||"Melano Fast Food",tagline:$("sTag").value.trim(),delivery_time:$("sTime").value.trim(),delivery_fee:fee,whatsapp:$("sWa").value.replace(/\D/g,"")}},"پاشەکەوت کرا ✓");
+  const ok=await act("owner_set_settings",{p_data:{shop_name:$("sName").value.trim()||"Melano Fast Food",tagline:$("sTag").value.trim(),delivery_time:$("sTime").value.trim(),delivery_fee:fee,discount_all:disc,delivery_tiers:JSON.stringify(tr),shop_lat:lm?lm[1]:"",shop_lng:lm?lm[2]:"",whatsapp:$("sWa").value.replace(/\D/g,"")}},"پاشەکەوت کرا ✓");
   $("saveShop").disabled=false; if(ok) loadMenu();
 };
 $("npShow").onchange=()=>["np0","np1","np2"].forEach(id=>$(id).type=$("npShow").checked?"text":"password");
