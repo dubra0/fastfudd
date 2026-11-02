@@ -332,7 +332,7 @@ function autoGeo(force){
   const end=(code)=>{
     if(over) return; over=true; navigator.geolocation.clearWatch(id); clearTimeout(tm);
     // شوێنی دەستی کڕیار هەرگیز ناگۆڕدرێت
-    if(best&&!(geo&&geo.acc===0)){ geo={lat:+best.latitude.toFixed(6),lng:+best.longitude.toFixed(6),acc:best.accuracy}; geoBusy=false; $("locGate").hidden=true; if($("sumFee")) paintLoc(); return; }
+    if(best&&!(geo&&geo.acc===0)){ geo={lat:+best.latitude.toFixed(6),lng:+best.longitude.toFixed(6),acc:best.accuracy}; geoBusy=false; $("locGate").hidden=true; paintHero(); if($("sumFee")) paintLoc(); return; }
     if(geo){ geoBusy=false; $("locGate").hidden=true; return; }
     fail(code===1);
   };
@@ -526,7 +526,9 @@ function paintHero(){
   const info = [];
   if(allDisc()) info.push(`🔥 ${allDisc()}% داشکاندن لەسەر هەموو مینیو`);
   if(SHOP.delivery_time) info.push(`🛵 گەیاندن ${esc(SHOP.delivery_time)} خولەک`);
-  info.push(distOn() ? "💵 نرخی گەیاندن بەپێی ناوچە" : fee() ? `💵 نرخی گەیاندن ${money(fee())}` : "🎁 گەیاندنی بێبەرامبەر");
+  // کڕیار لەسەرەتاوە ناوچە و نرخی گەیاندنی خۆی دەزانێت، نەک تەنها لە سەبەتە
+  const zn=zoneNow();
+  info.push(distOn()&&geo ? (zn ? `📍 ${esc(zn.n)} · ${fee()?money(fee()):"بێبەرامبەر"}` : "⚠️ لە دەرەوەی ناوچەکانی گەیاندنیت") : distOn() ? "💵 نرخی گەیاندن بەپێی ناوچە" : fee() ? `💵 نرخی گەیاندن ${money(fee())}` : "🎁 گەیاندنی بێبەرامبەر");
   info.push(isOpen() ? "🟢 کراوەیە" : "🔴 داخراوە");
   $("shopInfo").innerHTML = info.map(x=>`<span>${x}</span>`).join("");
   $("closedBar").hidden = isOpen();
@@ -652,7 +654,7 @@ function showPick(c,z){
     if(pick){ try{ pick.remove(); }catch(e){} }
     pick=L.map(box).setView(c,z); addTiles(L,pick); satCtl(L,pick);
     const m=L.marker(c,{icon:mkIcon(L,"🏠"),draggable:true}).addTo(pick);
-    const setHome=p=>{ geo={lat:+p.lat.toFixed(6), lng:+p.lng.toFixed(6), acc:0}; LS.set("mln_home",JSON.stringify([geo.lat,geo.lng])); const s=$("locStatus"); if(s){ s.textContent="✓ شوێنی ماڵەکەت بە دەست دیاری کرا"; s.style.color="var(--ok)"; } paintFee(); };
+    const setHome=p=>{ geo={lat:+p.lat.toFixed(6), lng:+p.lng.toFixed(6), acc:0}; LS.set("mln_home",JSON.stringify([geo.lat,geo.lng])); const s=$("locStatus"); if(s){ s.textContent="✓ شوێنی ماڵەکەت بە دەست دیاری کرا"; s.style.color="var(--ok)"; } paintHero(); paintFee(); };
     m.on("dragend",()=>setHome(m.getLatLng()));
     pick.on("click",e=>{ m.setLatLng(e.latlng); setHome(e.latlng); });
   }).catch(()=>{});
