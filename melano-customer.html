@@ -220,14 +220,24 @@ function jwtData(t){ try{ const b=t.split(".")[1].replace(/-/g,"+").replace(/_/g
 function setSession(at,rt){
   const d=jwtData(at); if(!d) return;
   const m=d.user_metadata||{};
+  // هەر هەژمارێک داتای خۆی هەیە: کەسێکی تر لەسەر هەمان مۆبایل داتای پێشوو نابینێت
+  if(LS.get("mln_uid")!==d.sub){ clearLocal(); LS.set("mln_uid",d.sub); }
   session={at,rt,exp:d.exp||0,name:m.full_name||m.name||"",email:d.email||d.phone||"",pic:m.avatar_url||m.picture||""};
   (remember?LS:SS).set("mln_auth",JSON.stringify(session));
 }
-function signOut(){ session=null; guest=false; LS.del("mln_auth"); SS.del("mln_auth"); paintAcct(); paintGate(); }
+function clearLocal(){ ["mln_orders","mln_cust","mln_home"].forEach(k=>LS.del(k)); }
+function signOut(){
+  session=null; guest=false; LS.del("mln_auth"); SS.del("mln_auth"); LS.del("mln_uid"); clearLocal();
+  try{ myNum=null; myTok=null; clearInterval(trackTimer); geo=null; syncChip(); $("ordBd").hidden=true; $("olist").innerHTML=""; }catch(e){}
+  paintAcct(); paintGate();
+}
 (function initAuth(){
   try{ session=JSON.parse(LS.get("mln_auth")||SS.get("mln_auth")||"null"); }catch(e){}
   const h=new URLSearchParams(location.hash.slice(1));
   if(h.get("access_token")){ setSession(h.get("access_token"),h.get("refresh_token")); justLogged=true; if(h.get("type")==="recovery") setTimeout(()=>openAuth("recovery")); history.replaceState(null,"",location.pathname+location.search); }
+  // ئەگەر Google نەیتوانی بچێتە ژوورەوە، هۆکارەکە نیشان دەدرێت نەک بێدەنگ بگەڕێتەوە
+  const q=new URLSearchParams(location.search), err=h.get("error_description")||q.get("error_description")||h.get("error")||q.get("error");
+  if(err){ history.replaceState(null,"",location.pathname); setTimeout(()=>{ const m=$("auMsg"); if(m){ m.textContent="چوونەژوورەوە بە Google نەکرا: "+err; m.style.color="var(--brand)"; } },300); }
 })();
 const SITE = () => location.href.split("#")[0].split("?")[0];
 async function authCall(path,method,body,token){
