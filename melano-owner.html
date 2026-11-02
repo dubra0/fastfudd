@@ -80,7 +80,7 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
 .imgprev img{width:100%;height:100%;object-fit:cover}
 .imgbtns{display:grid;gap:7px;flex:1}.imgbtns .btn{text-align:center;position:relative;overflow:hidden}
 .imgbtns input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;padding:0;font-size:0}
-#zoneMap{height:340px;border-radius:14px;overflow:hidden;margin-bottom:8px;border:1px solid var(--line)}.orow .rr{width:74px;flex:none}.zlbl{background:#fff;color:#111;border:0;font-weight:800;font-family:Tahoma,Arial,sans-serif}.zpin{font-size:24px;line-height:1;text-align:center}.satb{width:36px;height:36px;border:0;border-radius:9px;background:#fff;font-size:18px;cursor:pointer}
+#zoneMap{height:340px;border-radius:14px;overflow:hidden;margin-bottom:8px;border:1px solid var(--line)}.orow .rr{width:74px;flex:none}.zlbl{background:#fff;color:#111;border:0;font-weight:800;font-family:Tahoma,Arial,sans-serif}.zdot{width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid #ff7a18;box-sizing:border-box}.satb{width:36px;height:36px;border:0;border-radius:9px;background:#fff;font-size:18px;cursor:pointer}
 .orow{display:flex;gap:6px;align-items:center;margin-bottom:6px}.orow .pp{width:100px;flex:none;padding:9px;font-family:var(--fd)}.orow input{padding:9px}.orow button{flex:none}
 .note{color:var(--brand);font-size:.84rem;font-weight:700;display:block}
 .link{display:flex;gap:8px;align-items:center;margin-bottom:8px}.link input{direction:ltr;font-size:.82rem}
@@ -164,7 +164,7 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
         <div class="fld"><span class="fl">دروشم</span><input id="sTag"></div>
         <div class="fld"><span class="fl">کاتی گەیاندن (خولەک)</span><input id="sTime" placeholder="30-45"></div>
         <div class="fld"><span class="fl">نرخی گەیاندنی یەکسان (د.ع) · 0 = بێبەرامبەر · تەنها ئەگەر هیچ ناوچەیەک دانەنرابێت</span><input id="sFee" inputmode="numeric"></div>
-        <div class="fld" style="grid-column:1/-1"><span class="fl">🗺️ ناوچەکانی گەیاندن · لەسەر نەخشە کلیک بکە بۆ ناوچەی نوێ، پاشان ناو، نرخ و نیوەتیرە (کم) بنووسە</span><div id="zoneMap" dir="ltr"></div><div id="zoneRows"></div><div class="fl">ئەگەر ناوچەیەک لەناو ناوچەیەکی تر بێت، بچووکترینیان کار دەکات. لە دەرەوەی ناوچەکان داواکاری وەرناگیرێت.</div></div>
+        <div class="fld" style="grid-column:1/-1"><span class="fl">🗺️ ناوچەکانی گەیاندن · <b>ناوچەی نوێ بکێشە</b> دابگرە، لەسەر سنووری ناوچەکە چەند خاڵێک دیاری بکە، پاشان <b>تەواو</b></span><div id="zoneMap" dir="ltr"></div><div class="row" style="margin-bottom:8px"><button type="button" class="btn sm" id="zNew">✏️ ناوچەی نوێ بکێشە</button><button type="button" class="btn sm" id="zDone" hidden>✓ تەواو</button><button type="button" class="btn ghost sm" id="zUndo" hidden>↶ خاڵی کۆتا</button><button type="button" class="btn ghost sm red" id="zCancel" hidden>پاشگەزبوونەوە</button></div><div class="fl" id="zHint" hidden>لەسەر نەخشە کلیک بکە بۆ هەر خاڵێکی سنوور. لانیکەم 3 خاڵ.</div><div id="zoneRows"></div><div class="fl">تەنها ناو ناوچەکان گەیاندنیان هەیە. لە دەرەوەیان داواکاری وەرناگیرێت. ئەگەر ناوچەیەک لەناو ناوچەیەکی تر بێت، بچووکترینیان کار دەکات. خاڵەکان دەتوانرێت ڕابکێشرێن.</div></div>
         <div class="fld"><span class="fl">🔥 داشکاندن لەسەر هەموو مینیو (%) · 0 = نییە</span><input id="sDisc" type="number" inputmode="numeric" min="0" max="90" step="5"></div>
         <div class="fld"><span class="fl">واتسئەپ (ئارەزوومەندانە)</span><input id="sWa" inputmode="tel" dir="ltr" placeholder="9647501234567"></div>
       </div>
@@ -573,11 +573,11 @@ function paintSettings(){
   $("sOpen").checked=open; $("openTxt").textContent=open?"🟢 کراوەیە":"🔴 داخراوە";
   const act2=document.activeElement;
   [["sName","shop_name"],["sTag","tagline"],["sTime","delivery_time"],["sFee","delivery_fee"],["sDisc","discount_all"],["sWa","whatsapp"]].forEach(([id,k])=>{ if($(id)!==act2) $(id).value=s[k]||""; });
-  if(!zonesDirty){ try{ ZONES=JSON.parse(s.delivery_zones||"[]"); }catch(e){ ZONES=[]; } paintZones(); }
+  if(!zonesDirty){ try{ ZONES=JSON.parse(s.delivery_zones||"[]").filter(z=>Array.isArray(z.pts)); }catch(e){ ZONES=[]; } paintZones(); }
 }
 // ===== ناوچەکانی گەیاندن: خاوەن لەسەر نەخشە دیاریان دەکات =====
 const BARDARASH=[36.5136,43.5977];
-let ZONES=[], zonesDirty=false, zoneMap=null, zoneLayer=null, leaflet=null;
+let ZONES=[], zonesDirty=false, zoneMap=null, zoneLayer=null, leaflet=null, zDraft=null;
 function loadLeaflet(){
   if(leaflet) return leaflet;
   leaflet=new Promise((res,rej)=>{
@@ -590,37 +590,48 @@ function loadLeaflet(){
 function ensureZoneMap(){
   loadLeaflet().then(L=>{
     if(zoneMap){ zoneMap.invalidateSize(); return; }
-    zoneMap=L.map("zoneMap").setView(ZONES[0]?[ZONES[0].lat,ZONES[0].lng]:BARDARASH,12);
+    zoneMap=L.map("zoneMap").setView(ZONES[0]?ZONES[0].pts[0]:BARDARASH,12);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(zoneMap);
     const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:20,maxNativeZoom:19,attribution:"© Esri"});
     const C=L.Control.extend({options:{position:"topright"},onAdd(){ const b=L.DomUtil.create("button","satb"); b.type="button"; b.textContent="🛰️"; L.DomEvent.disableClickPropagation(b); b.onclick=()=>{ if(zoneMap.hasLayer(sat)){ zoneMap.removeLayer(sat); b.textContent="🛰️"; } else { sat.addTo(zoneMap); b.textContent="🗺️"; } }; return b; }});
     zoneMap.addControl(new C());
     zoneLayer=L.layerGroup().addTo(zoneMap);
-    zoneMap.on("click",e=>{ ZONES.push({n:"",fee:0,r:1,lat:+e.latlng.lat.toFixed(6),lng:+e.latlng.lng.toFixed(6)}); zonesDirty=true; paintZones(); const rows=$("zoneRows").querySelectorAll(".nn"); rows[rows.length-1].focus(); });
+    zoneMap.on("click",e=>{ if(!zDraft) return; if(zDraft.length>=60){ toast(ERR.zones,true); return; } zDraft.push([+e.latlng.lat.toFixed(6),+e.latlng.lng.toFixed(6)]); drawZones(); });
     drawZones();
-    if(ZONES.length) zoneMap.fitBounds(L.latLngBounds(ZONES.map(z=>[z.lat,z.lng])).pad(0.4),{maxZoom:14});
+    if(ZONES.length) zoneMap.fitBounds(L.latLngBounds(ZONES.flatMap(z=>z.pts)).pad(0.2),{maxZoom:15});
   }).catch(()=>toast("نەخشە بار نەبوو. ئینتەرنێت بپشکنە.",true));
 }
 function drawZones(){
   if(!zoneLayer) return; zoneLayer.clearLayers(); const L=window.L;
+  const dot=(p,cb)=>{ const m=L.marker(p,{draggable:!!cb,icon:L.divIcon({className:"zdot",iconSize:[14,14],iconAnchor:[7,7]})}).addTo(zoneLayer); if(cb) m.on("dragend",()=>cb(m.getLatLng())); };
   ZONES.forEach(z=>{
-    const c=L.circle([z.lat,z.lng],{radius:z.r*1000,color:"#ff7a18",weight:2,fillOpacity:.12}).addTo(zoneLayer);
-    c.on("click",e=>L.DomEvent.stopPropagation(e));
-    const m=L.marker([z.lat,z.lng],{draggable:true,icon:L.divIcon({className:"zpin",html:"📍",iconSize:[28,28],iconAnchor:[14,26]})}).addTo(zoneLayer);
-    m.bindTooltip(`${esc(z.n||"ناوچەی نوێ")} · ${nf(z.fee)}`,{permanent:true,direction:"top",offset:[0,-24],className:"zlbl"});
-    m.on("dragend",()=>{ const p=m.getLatLng(); z.lat=+p.lat.toFixed(6); z.lng=+p.lng.toFixed(6); zonesDirty=true; drawZones(); });
+    L.polygon(z.pts,{color:"#ff7a18",weight:2,fillOpacity:.14}).addTo(zoneLayer).bindTooltip(`${esc(z.n||"ناوچەی نوێ")} · ${nf(z.fee)}`,{permanent:true,direction:"center",className:"zlbl"});
+    if(!zDraft) z.pts.forEach((p,i)=>dot(p,q=>{ z.pts[i]=[+q.lat.toFixed(6),+q.lng.toFixed(6)]; zonesDirty=true; drawZones(); }));
   });
+  if(zDraft){ if(zDraft.length>1) L.polyline(zDraft,{color:"#e23b2e",weight:3,dashArray:"6"}).addTo(zoneLayer); zDraft.forEach(p=>dot(p)); }
 }
+function zDrawUi(on){ $("zNew").hidden=on; ["zDone","zUndo","zCancel","zHint"].forEach(id=>$(id).hidden=!on); }
+$("zNew").onclick=()=>{ zDraft=[]; zDrawUi(true); drawZones(); };
+$("zUndo").onclick=()=>{ if(zDraft){ zDraft.pop(); drawZones(); } };
+$("zCancel").onclick=()=>{ zDraft=null; zDrawUi(false); drawZones(); };
+$("zDone").onclick=()=>{
+  if(!zDraft||zDraft.length<3){ toast("لانیکەم 3 خاڵ دیاری بکە.",true); return; }
+  ZONES.push({n:"",fee:0,pts:zDraft}); zDraft=null; zonesDirty=true; zDrawUi(false); paintZones();
+  const rows=$("zoneRows").querySelectorAll(".nn"); rows[rows.length-1].focus();
+};
 function paintZones(){
-  $("zoneRows").innerHTML=ZONES.map((z,i)=>`<div class="orow"><input class="nn" data-zi="${i}" data-k="n" maxlength="40" placeholder="ناو: زەنگەنان" value="${esc(z.n)}"><input class="pp" data-zi="${i}" data-k="fee" type="number" inputmode="numeric" min="0" step="250" placeholder="نرخ" value="${esc(z.fee)}"><input class="rr" data-zi="${i}" data-k="r" type="number" inputmode="decimal" min="0.05" step="0.1" placeholder="کم" value="${esc(z.r)}"><button type="button" class="btn ghost sm red" data-zdel="${i}">✕</button></div>`).join("");
+  $("zoneRows").innerHTML=ZONES.map((z,i)=>`<div class="orow"><input class="nn" data-zi="${i}" data-k="n" maxlength="40" placeholder="ناو: زەنگەنان" value="${esc(z.n)}"><input class="pp" data-zi="${i}" data-k="fee" type="number" inputmode="numeric" min="0" step="250" placeholder="نرخ" value="${esc(z.fee)}"><button type="button" class="btn ghost sm red" data-zdel="${i}">✕</button></div>`).join("");
   $("zoneRows").querySelectorAll("[data-zi]").forEach(x=>x.oninput=()=>{ const z=ZONES[+x.dataset.zi], k=x.dataset.k; z[k]=k==="n"?x.value:parseFloat(x.value); zonesDirty=true; drawZones(); });
   $("zoneRows").querySelectorAll("[data-zdel]").forEach(b=>b.onclick=()=>{ ZONES.splice(+b.dataset.zdel,1); zonesDirty=true; paintZones(); });
   drawZones();
 }
 function readZones(){
-  const out=[]; let bad=ZONES.length>40;
-  ZONES.forEach(z=>{ const n=String(z.n||"").trim(), fee=Math.round(z.fee), r=Math.round(z.r*100)/100; if(!n||n.length>40||!(fee>=0&&fee<=9999999)||!(r>=0.05&&r<=100)) bad=true; else out.push({n,fee,r,lat:z.lat,lng:z.lng}); });
-  return bad||JSON.stringify(out).length>4000?null:out;
+  const out=[]; let bad=ZONES.length>40||!!zDraft;
+  ZONES.forEach(z=>{ const n=String(z.n||"").trim(), fee=Math.round(z.fee); if(!n||n.length>40||!(fee>=0&&fee<=9999999)||z.pts.length<3) bad=true; else out.push({n,fee,pts:z.pts}); });
+  if(bad||JSON.stringify(out).length>20000) return null;
+  // بچووکترین ناوچە یەکەم دێت، بۆیە ناوچەی ناو ناوچەیەکی تر نرخی خۆی دەبێت
+  const area=p=>Math.abs(p.reduce((s,q,i)=>{ const r=p[(i+1)%p.length]; return s+q[1]*r[0]-r[1]*q[0]; },0));
+  return out.sort((a,b)=>area(a.pts)-area(b.pts));
 }
 $("sOpen").onchange=async()=>{
   const v=$("sOpen").checked?"1":"0";

@@ -399,9 +399,10 @@ const allItems = () => MENU.flatMap(s=>s.items);
 const findItem = id => allItems().find(x=>String(x.id)===String(id));
 const flatFee = () => Math.max(0, parseInt(SHOP.delivery_fee,10) || 0);
 // ناوچەکانی گەیاندن: بچووکترین ناوچەی شوێنی کڕیار؛ سێرڤەر هەمان حیساب دەکاتەوە
-const zones = () => { try{ return JSON.parse(SHOP.delivery_zones||"[]").map((z,i)=>({...z,i})).sort((a,b)=>a.r-b.r||a.i-b.i); }catch(e){ return []; } };
+const zones = () => { try{ return JSON.parse(SHOP.delivery_zones||"[]").filter(z=>Array.isArray(z.pts)); }catch(e){ return []; } };
+function inZone(lat,lng,pts){ let inside=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){ const yi=pts[i][0],xi=pts[i][1],yj=pts[j][0],xj=pts[j][1]; if((yi>lat)!==(yj>lat)&&lng<(xj-xi)*(lat-yi)/(yj-yi)+xi) inside=!inside; } return inside; }
 const distOn = () => zones().length>0;
-const zoneNow = () => geo ? zones().find(z=>km(z.lat,z.lng,geo.lat,geo.lng)<=z.r) : null;
+const zoneNow = () => geo ? zones().find(z=>inZone(geo.lat,geo.lng,z.pts)) : null;
 const tooFar = () => distOn() && !!geo && !zoneNow();
 const fee = () => { if(!distOn()) return flatFee(); const z=zoneNow(); return z?z.fee:0; };
 const feeTxt = () => distOn()&&!geo ? "دوای دیاریکردنی شوێن" : tooFar() ? "دەرەوەی ناوچەکان" : (distOn()?zoneNow().n+" · ":"")+(fee()?money(fee()):"بێبەرامبەر 🎁");
@@ -572,7 +573,7 @@ function locFail(denied){
   s.style.color="var(--brand)";
   showPick(manualCenter(),13);
 }
-const manualCenter = () => { try{ const c=JSON.parse(LS.get("mln_home")||"null"); if(c) return c; }catch(e){} const z=zones()[0]; return z?[z.lat,z.lng]:[36.5136,43.5977]; };
+const manualCenter = () => { try{ const c=JSON.parse(LS.get("mln_home")||"null"); if(c) return c; }catch(e){} const z=zones()[0]; return z?z.pts[0]:[36.5136,43.5977]; };
 function pickManual(){
   const s=$("locStatus"); s.textContent="🗺️ نەخشەکە نزیک بکەرەوە و لەسەر ماڵەکەت کلیک بکە"; s.style.color="";
   showPick(geo?[geo.lat,geo.lng]:manualCenter(), geo?18:13);
