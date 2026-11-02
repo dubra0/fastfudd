@@ -31,6 +31,7 @@ body.orders .fab{display:none}
 .acct .an{flex:1;min-width:0}.acct .btn{width:auto;padding:8px 12px;font-size:.82rem;margin:0}
 #gate{position:fixed;inset:0;z-index:100;overflow:auto;background:var(--panel);padding:calc(18px + env(safe-area-inset-top)) 20px calc(18px + env(safe-area-inset-bottom))}
 body.gated{overflow:hidden}
+#locGate{position:fixed;inset:0;z-index:90;overflow:auto;background:var(--panel);padding:18px 20px}
 .g-in{max-width:440px;margin:0 auto}
 .g-logo{display:block;width:64px;height:64px;border-radius:18px;margin:6px auto 8px;box-shadow:0 8px 20px rgba(0,0,0,.14)}
 .g-title{text-align:center;font-weight:900;font-size:1.7rem;margin:0 0 16px}
@@ -154,11 +155,21 @@ body.gated{overflow:hidden}
     <img class="g-logo" src="icons/customer-192.png" alt="">
     <span id="gName" hidden></span><span id="gTag" hidden></span>
     <h1 class="g-title" id="gTitle">چوونەژوورەوە</h1>
-    <div class="g-tabs" id="gTabs"><button id="gMail" aria-pressed="true">✉️ ئیمەیڵ</button><button id="gMobile" aria-pressed="false">📱 مۆبایل</button></div>
     <div id="gateBody"></div>
     <div id="gSocial"></div>
     <div class="g-foot" id="gFoot"></div>
-    <p class="hint"><a href="privacy.html" style="color:var(--muted)">سیاسەتی تایبەتمەندی</a></p>
+    <p class="hint"><a href="privacy.html" style="color:var(--muted)">سیاسەتی تایبەتمەندی</a> · <a href="terms.html" style="color:var(--muted)">مەرجەکان</a> · <a href="delete-account.html" style="color:var(--muted)">سڕینەوەی هەژمار</a></p>
+  </div>
+</div>
+<div id="locGate" hidden>
+  <div class="g-in">
+    <div style="font-size:3rem;text-align:center;margin-top:24px">📍</div>
+    <h1 class="g-title">لۆکەیشن پێویستە</h1>
+    <p class="hint" id="lgMsg" style="font-size:.92rem;line-height:1.8">بۆ ئەوەی گەیەنەر بگاتە دەرگای ماڵەکەت و نرخی گەیاندن بزانیت، لۆکەیشن چالاک بکە.</p>
+    <button class="btn go" id="lgOn" style="margin-top:12px">📍 چالاککردنی لۆکەیشن</button>
+    <button class="btn ghost" id="lgMap">🗺️ لەسەر نەخشە دیاری بکە</button>
+    <div id="lgPick" class="pick" dir="ltr" hidden style="margin-top:10px"></div>
+    <button class="btn go" id="lgDone" hidden style="margin-top:10px">تەواو</button>
   </div>
 </div>
 <div class="wrap">
@@ -212,7 +223,7 @@ function setSession(at,rt){
   session={at,rt,exp:d.exp||0,name:m.full_name||m.name||"",email:d.email||d.phone||"",pic:m.avatar_url||m.picture||""};
   (remember?LS:SS).set("mln_auth",JSON.stringify(session));
 }
-function signOut(){ session=null; LS.del("mln_auth"); SS.del("mln_auth"); paintAcct(); paintGate(); }
+function signOut(){ session=null; guest=false; LS.del("mln_auth"); SS.del("mln_auth"); paintAcct(); paintGate(); }
 (function initAuth(){
   try{ session=JSON.parse(LS.get("mln_auth")||SS.get("mln_auth")||"null"); }catch(e){}
   const h=new URLSearchParams(location.hash.slice(1));
@@ -229,29 +240,54 @@ const authErrText = x => x.status===429 ? "هەوڵی زۆر درا. تکایە 
 const AUTH_T = {login:"چوونەژوورەوە",signup:"هەژماری نوێ",forgot:"لەبیرچوونی پاسوۆرد",recovery:"پاسوۆردی نوێ"};
 function paintSocial(){
   const el=$("gSocial"); if(!el) return;
-  const r=(id,label,icon)=>`<button class="g-rnd" id="${id}" aria-label="${label}">${icon}</button>`;
-  const F=`<svg width="22" height="22" viewBox="0 0 24 24" fill="#1877F2" aria-hidden="true"><path d="M14 8.5V6.6c0-.9.6-1.1 1-1.1h2.6V1.6L14 1.6c-4 0-4.9 3-4.9 4.9v2H6.4v4.1h2.7V23h4.9V12.6h3.3l.5-4.1H14z"/></svg>`;
-  const X=`<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.2 2.3h3.3l-7.2 8.3 8.5 11.2h-6.7l-5.2-6.8-6 6.8H2.6l7.7-8.8L2.2 2.3h6.8l4.7 6.2 4.5-6.2zm-1.1 17.5h1.8L7.1 4.1H5.1l12 15.7z"/></svg>`;
-  const b=(fbOn?r("gFb","Facebook",F):"")+(xOn?r("gX","X",X):"")+(googleOn?r("gGoogle","Google",G_ICON):"")+(appleOn?r("gApple","Apple",A_ICON):"");
-  el.innerHTML=b?`<div class="g-or">یان</div><div class="g-social">${b}</div>`:"";
-  [["gFb","facebook"],["gX","twitter"],["gGoogle","google"],["gApple","apple"]].forEach(([id,p])=>{ if($(id)) $(id).onclick=()=>oauthLogin(p); });
+  el.innerHTML=`<div class="g-or">یان</div><button class="gbtn" id="gGoogle" style="width:100%">${G_ICON}چوونەژوورەوە بە Google</button>`;
+  // ئەگەر هێشتا لە Supabase چالاک نەکراوە، نامەیەک نیشان دەدات نەک لاپەڕەی هەڵە
+  $("gGoogle").onclick=()=>{ if(googleOn) googleLogin(); else { const m=$("auMsg"); if(m){ m.textContent="چوونەژوورەوە بە Google بەم زووانە چالاک دەبێت."; m.style.color="var(--brand)"; } } };
 }
 // بێ هەژمار تەنها پەڕەی بەخێرهاتن دەردەکەوێت
 const MAIL_READY=false;
+// میوان دەتوانێت مینیو ببینێت؛ ناردنی داواکاری هەژماری دەوێت
+let guest=false;
 function paintGate(){
-  $("gate").hidden=!!session; document.body.classList.toggle("gated",!session);
-  if(!session) openAuth("login");
+  const show=!session&&!guest;
+  $("gate").hidden=!show; document.body.classList.toggle("gated",show);
+  if(show) openAuth("login"); else setTimeout(autoGeo);
 }
+function askLogin(){ guest=false; paintGate(); }
+// ===== لۆکەیشن: هەر جارێک ئەپ بکرێتەوە خۆی دەیگرێت؛ بێ شوێن ناتوانرێت بەردەوام بێت =====
+let geoBusy=false;
+function autoGeo(force){
+  if(geoBusy||(geo&&!force)) return;
+  const fail=denied=>{ geoBusy=false; if(geo) return; $("lgMsg").textContent = denied
+      ? (isIOS?"لە iPhone: Settings › Privacy & Security › Location Services هەڵبکە و Safari Websites بکە While Using the App، پاشان پەڕەکە Refresh بکە.":"لە ڕێکخستنی مۆبایل ڕێگە بە Location بدە و GPS هەڵبکە، پاشان دووبارە هەوڵ بدەرەوە.")
+      : "لۆکەیشن نەدۆزرایەوە. GPS هەڵبکە و دووبارە هەوڵ بدەرەوە، یان لەسەر نەخشە دیاری بکە."; $("locGate").hidden=false; };
+  if(!navigator.geolocation){ fail(false); return; }
+  geoBusy=true;
+  let best=null, over=false, id=null;
+  const end=(code)=>{
+    if(over) return; over=true; navigator.geolocation.clearWatch(id); clearTimeout(tm);
+    // شوێنی دەستی کڕیار هەرگیز ناگۆڕدرێت
+    if(best&&!(geo&&geo.acc===0)){ geo={lat:+best.latitude.toFixed(6),lng:+best.longitude.toFixed(6),acc:best.accuracy}; geoBusy=false; $("locGate").hidden=true; if($("sumFee")) paintLoc(); return; }
+    if(geo){ geoBusy=false; $("locGate").hidden=true; return; }
+    fail(code===1);
+  };
+  const tm=setTimeout(()=>end(0),12000);
+  id=navigator.geolocation.watchPosition(p=>{ if(!best||p.coords.accuracy<best.accuracy) best=p.coords; if(best.accuracy<=20) end(0); },e=>{ if(e.code===1||!best) end(e.code); },{enableHighAccuracy:true,maximumAge:0,timeout:12000});
+}
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible"&&(session||guest)&&!(geo&&geo.acc===0)) autoGeo(true); });
+$("lgOn").onclick=()=>{ $("lgMsg").textContent="📡 لۆکەیشن دەدۆزرێتەوە…"; autoGeo(true); };
+$("lgMap").onclick=()=>{ $("lgPick").hidden=false; $("lgDone").hidden=false; showPick(manualCenter(),13); };
+$("lgDone").onclick=()=>{ if(geo){ $("locGate").hidden=true; $("lgPick").hidden=true; $("lgDone").hidden=true; } else $("lgMsg").textContent="لەسەر نەخشە لەسەر ماڵەکەت کلیک بکە."; };
 function openAuth(mode){
   const inGate=!session, box=$(inGate?"gateBody":"authBody");
   const eye=`<button type="button" class="g-eye" id="auEye" aria-label="پیشاندانی پاسوۆرد">👁</button>`;
   if(inGate){
     $("gTitle").textContent=mode==="signup"?"هەژماری نوێ":mode==="forgot"?"لەبیرچوونی پاسوۆرد":"چوونەژوورەوە";
-    $("gTabs").hidden=mode==="signup"||mode==="forgot";
-    $("gMail").setAttribute("aria-pressed",mode==="login"); $("gMobile").setAttribute("aria-pressed",mode==="phone"||mode==="otp");
     $("gSocial").hidden=mode==="forgot"||mode==="otp";
     $("gFoot").innerHTML=mode==="signup"?`هەژمارت هەیە؟ <button class="g-link" id="gSw">بچۆ ژوورەوە</button>`:`ئەندام نیت؟ <button class="g-link" id="gSw">هەژمار دروست بکە</button>`;
+    $("gFoot").innerHTML+=`<div style="margin-top:10px"><button class="g-link" id="gGuest">سەرەتا مینیو ببینە</button></div>`;
     $("gSw").onclick=()=>openAuth(mode==="signup"?"login":"signup");
+    $("gGuest").onclick=()=>{ guest=true; paintGate(); };
   } else $("authTitle").textContent=AUTH_T[mode];
   const fld=(id,label,type,ac,ph)=>`<div class="field"><label for="${id}">${label}</label><input id="${id}" type="${type}" autocomplete="${ac}" dir="ltr" placeholder="${ph||""}"></div>`;
   const pass=(label,ac)=>`<div class="field"><label for="auPass">${label}</label><div class="g-pass"><input id="auPass" type="password" autocomplete="${ac}" dir="ltr">${eye}</div></div>`;
@@ -307,7 +343,6 @@ async function submitAuth(mode){
 }
 $("authX").onclick=()=>$("authOv").classList.remove("on");
 $("authOv").onclick=e=>{ if(e.target.id==="authOv") $("authOv").classList.remove("on"); };
-$("gMail").onclick=()=>openAuth("login"); $("gMobile").onclick=()=>openAuth("phone");
 paintGate();
 async function authToken(){
   if(!session) return KEY;
@@ -344,11 +379,11 @@ function paintAcct(){
     };
   } else {
     el.innerHTML=`<div class="acct col"><small>بچۆ ژوورەوە بۆ ئەوەی داواکارییەکانت لەسەر هەر مۆبایلێک ببینیت. بێ هەژماریش دەتوانیت داواکاری بنێریت.</small><button class="gbtn" id="mailBtn">✉️ چوونەژوورەوە بە ئیمەیڵ</button>${googleOn?`<button class="gbtn" id="gBtn"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.2C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.9 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.9c-.6 3-2.2 5.5-4.7 7.2l7.6 5.9c4.4-4.1 7.1-10.1 7.1-17.6z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.2C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.2 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.2C6.5 42.6 14.6 48 24 48z"/></svg>چوونەژوورەوە بە Google</button>`:""}</div>`;
-    $("mailBtn").onclick=()=>openAuth("login");
+    $("mailBtn").onclick=askLogin;
     if(googleOn) $("gBtn").onclick=googleLogin;
   }
 }
-fetch(`${BASE}/auth/v1/settings`,{headers:{apikey:KEY}}).then(r=>r.json()).then(s=>{ const e=s.external||{}; googleOn=!!e.google; appleOn=!!e.apple; fbOn=!!e.facebook; xOn=!!(e.twitter||e.x); phoneOn=!!e.phone; paintAcct(); paintSocial(); }).catch(()=>{});
+fetch(`${BASE}/auth/v1/settings`,{headers:{apikey:KEY}}).then(r=>r.json()).then(s=>{ const e=s.external||{}; googleOn=!!e.google; appleOn=!!e.apple; fbOn=!!e.facebook; xOn=!!(e.twitter||e.x); phoneOn=!!e.phone; paintAcct(); }).catch(()=>{}).finally(paintSocial);
 async function rpc(fn, body){
   const send=t=>fetch(SUPA+fn, { method:"POST", headers:{"Content-Type":"application/json", apikey:KEY, Authorization:"Bearer "+t}, body:JSON.stringify(body||{}) });
   const t=await authToken();
@@ -544,7 +579,7 @@ function pickManual(){
 }
 function showPick(c,z){
   loadLeaflet().then(L=>{
-    const box=$("pick"); if(!box) return;
+    const box=$("locGate").hidden?$("pick"):$("lgPick"); if(!box) return;
     box.hidden=false;
     if(pick){ try{ pick.remove(); }catch(e){} }
     pick=L.map(box).setView(c,z); addTiles(L,pick); satCtl(L,pick);
@@ -594,7 +629,7 @@ function renderCart(){
 
 async function placeOrder(){
   const name=$("oName").value.trim(), phone=$("oPhone").value.trim(), addr=$("oAddr").value.trim();
-  if(!session){ paintGate(); return; }
+  if(!session){ askLogin(); return; }
   if(!name||!phone||!addr){ alert("تکایە ناو، ژمارە و ناونیشان بنووسە."); return; }
   if(phone.replace(/\D/g,"").length<7){ alert("ژمارەی مۆبایل دروست نییە."); return; }
   // بێ شوێن گەیەنەر ناگاتە لای کڕیار
@@ -618,7 +653,7 @@ async function placeOrder(){
   const wa = String(SHOP.whatsapp||"").replace(/\D/g,"");
   const waBtn = wa ? `<a class="btn ghost" href="https://wa.me/${wa}?text=${encodeURIComponent(`داواکاری ${myNum} · کۆ ${money(res.total)}\n${name} · ${phone}\n${addr}`)}" target="_blank" rel="noopener" style="text-align:center;display:block;text-decoration:none">📲 پەیوەندی بە واتسئەپ</a>` : "";
   $("okBody").innerHTML=trackShell(waBtn);
-  cart={}; geo=null; autoTried=false; update(); $("cartOv").classList.remove("on"); $("okOv").classList.add("on");
+  cart={}; geo=null; autoTried=false; setTimeout(autoGeo,500); update(); $("cartOv").classList.remove("on"); $("okOv").classList.add("on");
   wireNewOrder(); startTrack(); loadOrders();
 }
 function wireNewOrder(){ $("newOrder").onclick=()=>{ $("okOv").classList.remove("on"); syncChip(); loadOrders(); }; }
