@@ -32,6 +32,15 @@ body.orders .fab{display:none}
 #gate{position:fixed;inset:0;z-index:100;overflow:auto;background:var(--panel);padding:calc(18px + env(safe-area-inset-top)) 20px calc(18px + env(safe-area-inset-bottom))}
 body.gated{overflow:hidden}
 #locGate{position:fixed;inset:0;z-index:90;overflow:auto;background:var(--panel);padding:18px 20px}
+#profGate{position:fixed;inset:0;z-index:95;overflow:auto;background:var(--panel);padding:18px 20px}
+#profGate input,#profGate select{width:100%}
+.g-sex{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g-sex label{display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:11px;cursor:pointer;font-weight:800}
+.g-sex label:has(input:checked){border-color:var(--brand);color:var(--brand);background:var(--soft)}
+.g-sex input{width:auto}
+.lang{display:flex;justify-content:center;gap:6px;margin:0 0 10px}
+.lang button{font:inherit;font-size:.8rem;font-weight:800;border:1px solid var(--line);border-radius:99px;background:var(--panel);color:var(--muted);padding:4px 12px;cursor:pointer}
+.lang button[aria-pressed=true]{background:var(--brand);border-color:var(--brand);color:#fff}
 .g-in{max-width:440px;margin:0 auto}
 .g-logo{display:block;width:64px;height:64px;border-radius:18px;margin:6px auto 8px;box-shadow:0 8px 20px rgba(0,0,0,.14)}
 .g-title{text-align:center;font-weight:900;font-size:1.7rem;margin:0 0 16px}
@@ -148,10 +157,12 @@ body.gated{overflow:hidden}
 .pick{height:300px;border-radius:14px;overflow:hidden;border:1px solid var(--line);margin-top:8px}
 .chip{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(132px + env(safe-area-inset-bottom));z-index:39;border:0;border-radius:99px;background:var(--ok);color:#fff;font:inherit;font-weight:800;padding:10px 18px;cursor:pointer;box-shadow:0 8px 20px -6px rgba(0,0,0,.5);white-space:nowrap}
 </style>
+<script src="i18n.js"></script>
 </head>
 <body>
 <div id="gate" hidden>
   <div class="g-in">
+    <div class="lang"><button data-lang="ku">کوردی</button><button data-lang="ar">العربية</button><button data-lang="en">English</button></div>
     <img class="g-logo" src="icons/customer-192.png" alt="">
     <span id="gName" hidden></span><span id="gTag" hidden></span>
     <h1 class="g-title" id="gTitle">چوونەژوورەوە</h1>
@@ -159,6 +170,18 @@ body.gated{overflow:hidden}
     <div id="gSocial"></div>
     <div class="g-foot" id="gFoot"></div>
     <p class="hint"><a href="privacy.html" style="color:var(--muted)">سیاسەتی تایبەتمەندی</a> · <a href="terms.html" style="color:var(--muted)">مەرجەکان</a> · <a href="delete-account.html" style="color:var(--muted)">سڕینەوەی هەژمار</a></p>
+  </div>
+</div>
+<div id="profGate" hidden>
+  <div class="g-in">
+    <div class="lang"><button data-lang="ku">کوردی</button><button data-lang="ar">العربية</button><button data-lang="en">English</button></div>
+    <h1 class="g-title">پرۆفایلەکەت تەواو بکە</h1>
+    <div class="field"><label for="pfName">ناوی تەواو</label><input id="pfName" autocomplete="name" maxlength="60"></div>
+    <div class="field"><label for="pfPhone">ژمارەی مۆبایل</label><input id="pfPhone" type="tel" inputmode="tel" autocomplete="tel" dir="ltr" placeholder="0750 123 4567"></div>
+    <div class="field"><label>ڕەگەز</label><div class="g-sex"><label><input type="radio" name="pfSex" value="m"><span>کوڕ</span></label><label><input type="radio" name="pfSex" value="f"><span>کچ</span></label></div></div>
+    <div class="field"><label for="pfBirth">ڕێکەوتی لەدایکبوون</label><input id="pfBirth" type="date" dir="ltr" min="1900-01-01"></div>
+    <p class="hint" id="pfMsg" style="margin-bottom:8px"></p>
+    <button class="btn go" id="pfSave">پاشەکەوتکردن</button>
   </div>
 </div>
 <div id="locGate" hidden>
@@ -228,13 +251,14 @@ function setSession(at,rt){
 function clearLocal(){ ["mln_orders","mln_cust","mln_home"].forEach(k=>LS.del(k)); }
 function signOut(){
   session=null; guest=false; LS.del("mln_auth"); SS.del("mln_auth"); LS.del("mln_uid"); clearLocal();
-  try{ myNum=null; myTok=null; clearInterval(trackTimer); geo=null; syncChip(); $("ordBd").hidden=true; $("olist").innerHTML=""; }catch(e){}
+  try{ profile=null; $("profGate").hidden=true; myNum=null; myTok=null; clearInterval(trackTimer); geo=null; syncChip(); $("ordBd").hidden=true; $("olist").innerHTML=""; }catch(e){}
   paintAcct(); paintGate();
 }
 (function initAuth(){
   try{ session=JSON.parse(LS.get("mln_auth")||SS.get("mln_auth")||"null"); }catch(e){}
   const h=new URLSearchParams(location.hash.slice(1));
-  if(h.get("access_token")){ setSession(h.get("access_token"),h.get("refresh_token")); justLogged=true; if(h.get("type")==="recovery") setTimeout(()=>openAuth("recovery")); history.replaceState(null,"",location.pathname+location.search); }
+  // کەسێک کە بە Google چووە ژوورەوە، جاری داهاتوو ڕاستەوخۆ دەچێتە ناوەوە
+  if(h.get("access_token")){ remember=true; LS.set("mln_keep","1"); setSession(h.get("access_token"),h.get("refresh_token")); justLogged=true; if(h.get("type")==="recovery") setTimeout(()=>openAuth("recovery")); history.replaceState(null,"",location.pathname+location.search); }
   // ئەگەر Google نەیتوانی بچێتە ژوورەوە، هۆکارەکە نیشان دەدرێت نەک بێدەنگ بگەڕێتەوە
   const q=new URLSearchParams(location.search), err=h.get("error_description")||q.get("error_description")||h.get("error")||q.get("error");
   if(err){ history.replaceState(null,"",location.pathname); setTimeout(()=>{ const m=$("auMsg"); if(m){ m.textContent="چوونەژوورەوە بە Google نەکرا: "+err; m.style.color="var(--brand)"; } },300); }
@@ -261,8 +285,39 @@ let guest=false;
 function paintGate(){
   const show=!session&&!guest;
   $("gate").hidden=!show; document.body.classList.toggle("gated",show);
-  if(show) openAuth("login"); else setTimeout(autoGeo);
+  if(show) openAuth("login"); else { setTimeout(autoGeo); if(session) setTimeout(checkProfile); }
 }
+// ===== پرۆفایل: یەکەم جار پاش چوونەژوورەوە پڕ دەکرێتەوە =====
+let profile=null;
+async function checkProfile(){
+  if(!session||profile) return;
+  let r; try{ r=await rpc("get_profile"); }catch(e){ return; }
+  if(!r||r.ok!==true||!session) return;
+  if(r.profile){ profile=r.profile; keepCust(); } else openProfile();
+}
+const localPhone = p => String(p||"").replace(/^\+964/,"0");
+function keepCust(){
+  let c=null; try{ c=JSON.parse(LS.get("mln_cust")||"null"); }catch(e){}
+  LS.set("mln_cust",JSON.stringify({name:(c&&c.name)||profile.name,phone:(c&&c.phone)||localPhone(profile.phone),addr:(c&&c.addr)||""}));
+}
+function openProfile(){
+  const p=profile||{};
+  $("pfName").value=p.name||(session&&session.name)||""; $("pfPhone").value=localPhone(p.phone); $("pfBirth").value=p.birth||"";
+  $("pfBirth").max=new Date().toISOString().slice(0,10);
+  document.querySelectorAll('[name="pfSex"]').forEach(x=>x.checked=x.value===p.gender);
+  $("pfMsg").textContent=""; $("profGate").hidden=false;
+}
+$("pfSave").onclick=async()=>{
+  const name=$("pfName").value.trim(), phone=iraqPhone($("pfPhone").value), sex=(document.querySelector('[name="pfSex"]:checked')||{}).value, birth=$("pfBirth").value;
+  const say=m=>{ $("pfMsg").textContent=m; $("pfMsg").style.color="var(--brand)"; };
+  if(name.length<2||!sex||!birth){ say("تکایە هەموو خانەکان پڕ بکەرەوە."); return; }
+  if(!phone){ say("ژمارەی مۆبایل دروست نییە."); return; }
+  $("pfSave").disabled=true;
+  let r; try{ r=await rpc("save_profile",{p_name:name,p_phone:phone,p_gender:sex,p_birth:birth}); }catch(e){ r=null; }
+  $("pfSave").disabled=false;
+  if(!r||!r.ok){ say(r&&r.error==="fields"?"تکایە هەموو خانەکان پڕ بکەرەوە.":"نەکرا. ئینتەرنێت بپشکنە و دووبارە هەوڵ بدەرەوە."); return; }
+  profile={name,phone,gender:sex,birth}; keepCust(); $("profGate").hidden=true; autoGeo();
+};
 function askLogin(){ guest=false; paintGate(); }
 // ===== لۆکەیشن: هەر جارێک ئەپ بکرێتەوە خۆی دەیگرێت؛ بێ شوێن ناتوانرێت بەردەوام بێت =====
 let geoBusy=false;
@@ -379,8 +434,10 @@ function iraqPhone(v){
 function paintAcct(){
   const el=$("acct"); if(!el) return;
   if(session){
-    el.innerHTML=`<div class="acct">${safeImg(session.pic)?`<img src="${esc(session.pic)}" alt="" referrerpolicy="no-referrer">`:`<span class="av">👤</span>`}<div class="an"><b>${esc(session.name||"هەژمارەکەم")}</b><small>${esc(session.email)}</small></div><button class="btn ghost" id="outBtn">دەرچوون</button></div><p class="hint"><a href="#" id="delAcct" style="color:var(--muted)">سڕینەوەی هەژمار</a></p>`;
+    el.innerHTML=`<div class="acct">${safeImg(session.pic)?`<img src="${esc(session.pic)}" alt="" referrerpolicy="no-referrer">`:`<span class="av">👤</span>`}<div class="an"><b>${esc(session.name||"هەژمارەکەم")}</b><small>${esc(session.email)}</small></div><button class="btn ghost" id="outBtn">دەرچوون</button></div><div class="lang" style="margin-top:10px"><button data-lang="ku">کوردی</button><button data-lang="ar">العربية</button><button data-lang="en">English</button></div><p class="hint"><a href="#" id="profBtn" style="color:var(--muted)">پرۆفایل</a> · <a href="#" id="delAcct" style="color:var(--muted)">سڕینەوەی هەژمار</a></p>`;
     $("outBtn").onclick=()=>{ signOut(); loadOrders(); };
+    $("profBtn").onclick=e=>{ e.preventDefault(); openProfile(); };
+    if(window.setLang) document.querySelectorAll("#acct [data-lang]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lang===(localStorage.getItem("mln_lang")||"ku")));
     $("delAcct").onclick=async e=>{
       e.preventDefault();
       if(!confirm("هەژمارەکەت بە تەواوی دەسڕدرێتەوە و ناگەڕێتەوە. دڵنیایت؟")) return;
