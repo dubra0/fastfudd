@@ -86,7 +86,7 @@ input{font:inherit;padding:12px 14px;border:1px solid var(--line);border-radius:
 <div id="app" class="wrap" hidden>
   <div class="top">
     <div><b>🛵 داواکارییەکان</b><div class="me" id="me"></div></div>
-    <div style="display:flex;align-items:center;gap:10px"><span class="live"><span class="dot"></span>زیندوو</span><button class="btn ghost sm" id="out">دەرچوون</button></div>
+    <div style="display:flex;align-items:center;gap:10px"><span class="live"><span class="dot"></span>زیندوو</span><button class="btn ghost sm" id="pushBtn" hidden>🔔 ئاگادارکردنەوە</button><button class="btn ghost sm" id="out">دەرچوون</button></div>
   </div>
   <div id="gps" class="gps" hidden></div>
   <div class="nav" id="nav" hidden><span class="ar" id="navAr"></span><div><b id="navTxt"></b><small id="navSub"></small></div></div>
@@ -120,9 +120,32 @@ async function login(){
   me={name:r.name,pin:r.token}; try{ localStorage.setItem("mln_drv",JSON.stringify(me)); }catch(e){}
   enter();
 }
-function enter(){ $("login").hidden=true; $("app").hidden=false; $("me").textContent="بەخێربێیت "+me.name; startGps(); loop(); clearInterval(timer); timer=setInterval(loop,4000); }
+function enter(){ $("login").hidden=true; $("app").hidden=false; $("me").textContent="بەخێربێیت "+me.name; startGps(); loop(); clearInterval(timer); timer=setInterval(loop,4000); pushOn(false); }
 $("go").onclick=login; $("dPin").onkeydown=e=>{if(e.key==="Enter")login();};
-$("out").onclick=()=>{ clearInterval(timer); try{localStorage.removeItem("mln_drv");}catch(e){} location.reload(); };
+$("out").onclick=async()=>{ clearInterval(timer); await pushOff(); try{localStorage.removeItem("mln_drv");}catch(e){} location.reload(); };
+
+// ===== ئاگادارکردنەوە (Push): داواکاریی نوێ و نامەی کڕیار، تەنانەت کاتێک مۆبایل قوفڵە =====
+const VAPID = "BEr-NhEN7MokO5XFSjm8y7r7h7tmMrOubsyyAIA1hvKmeVN_O7d1aahMOW0YYYfzsVbMzmdEl3mlrn14WBy4vlc";
+const pushCan = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+function pushPaint(){ $("pushBtn").hidden = !pushCan() || Notification.permission==="granted"; }
+async function pushOn(ask){
+  pushPaint();
+  if(!pushCan()) return;
+  try{
+    if(ask&&Notification.permission==="default") await Notification.requestPermission();
+    if(Notification.permission==="denied"&&ask) alert("ئاگادارکردنەوە داخراوە. لە ڕێکخستنی مۆبایل › Notifications ڕێگەی پێ بدە.");
+    if(Notification.permission!=="granted") return;
+    const reg=await navigator.serviceWorker.ready;
+    let s=await reg.pushManager.getSubscription();
+    if(!s) s=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:Uint8Array.from(atob(VAPID.replace(/-/g,"+").replace(/_/g,"/")),c=>c.charCodeAt(0))});
+    const j=s.toJSON(); await rpc("driver_push_save",{p_name:me.name,p_pin:me.pin,p_ep:j.endpoint,p_key:j.keys.p256dh,p_auth:j.keys.auth});
+  }catch(e){}
+  pushPaint();
+}
+async function pushOff(){
+  try{ const r=pushCan()&&await navigator.serviceWorker.getRegistration(); const s=r&&await r.pushManager.getSubscription(); if(s) await rpc("push_del",{p_ep:s.endpoint}); }catch(e){}
+}
+$("pushBtn").onclick=()=>pushOn(true);
 
 // ===== چات لەگەڵ کڕیاری داواکارییەکی خۆت =====
 let chatNum=null, chatTimer=null;
