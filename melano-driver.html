@@ -58,6 +58,9 @@ input{font:inherit;padding:12px 14px;border:1px solid var(--line);border-radius:
 .nav{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#15a35a,#0f7f46);color:#fff;border-radius:16px;padding:12px 14px;margin-bottom:10px}
 .nav .ar{font-size:2.3rem;line-height:1;flex:none}
 .nav b{display:block;font-size:1.12rem;font-weight:900;line-height:1.35}.nav small{font-size:.86rem;opacity:.92}
+.mk.num span{background:var(--brand);color:#1a0f02;font-weight:900;font-size:17px;font-family:var(--fd)}
+.pno{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--brand);color:#1a0f02;font-size:.85rem;margin-inline-end:6px}
+.card.flash{box-shadow:0 0 0 3px var(--brand);transition:box-shadow .3s}
 .cbd{background:var(--brand);color:#1a0f02;border-radius:99px;padding:0 7px;font-size:.75rem;margin-inline-start:4px}
 .ov{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.6);display:none;align-items:flex-end}.ov.on{display:flex}
 .sheet{background:var(--bg);width:100%;max-width:620px;margin:0 auto;border-radius:20px 20px 0 0;padding:16px;max-height:88vh;display:flex;flex-direction:column}
@@ -105,7 +108,7 @@ async function rpc(fn, body){ const r=await fetch(SUPA+fn,{method:"POST",headers
 function bell(){ try{ const A=window.AudioContext||window.webkitAudioContext; if(!A)return; const c=new A(); [988,1319,1760].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+i*0.14;o.type="sine";o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.3,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.6);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+0.6);});}catch(e){} }
 
 let me = { name:"", pin:"" }, timer=null, lastPending=0, started=false;
-try{ const s=JSON.parse(sessionStorage.getItem("mln_drv")||"null"); if(s){ me=s; } }catch(e){}
+try{ const s=JSON.parse(localStorage.getItem("mln_drv")||"null"); if(s){ me=s; } }catch(e){}
 
 async function login(){
   const name=$("dName").value.trim(), pin=$("dPin").value.trim();
@@ -114,12 +117,12 @@ async function login(){
   $("go").disabled=false;
   if(!r||!r.ok){ $("lmsg").textContent=!r?"ئینتەرنێت نییە.":(r.ok===false&&!r.error)?"ناو یان PIN هەڵەیە.":"هەوڵی هەڵە زۆر بوو. ٣٠ خولەکی تر هەوڵ بدەرەوە."; return; }
   // تەنها تۆکنی کاتی هەڵدەگیرێت، نەک PIN
-  me={name:r.name,pin:r.token}; try{ sessionStorage.setItem("mln_drv",JSON.stringify(me)); }catch(e){}
+  me={name:r.name,pin:r.token}; try{ localStorage.setItem("mln_drv",JSON.stringify(me)); }catch(e){}
   enter();
 }
 function enter(){ $("login").hidden=true; $("app").hidden=false; $("me").textContent="بەخێربێیت "+me.name; startGps(); loop(); clearInterval(timer); timer=setInterval(loop,4000); }
 $("go").onclick=login; $("dPin").onkeydown=e=>{if(e.key==="Enter")login();};
-$("out").onclick=()=>{ clearInterval(timer); try{sessionStorage.removeItem("mln_drv");}catch(e){} location.reload(); };
+$("out").onclick=()=>{ clearInterval(timer); try{localStorage.removeItem("mln_drv");}catch(e){} location.reload(); };
 
 // ===== چات لەگەڵ کڕیاری داواکارییەکی خۆت =====
 let chatNum=null, chatTimer=null;
@@ -151,32 +154,36 @@ async function loop(){
   let r; try{ r=await rpc("driver_orders",{p_name:me.name,p_pin:me.pin}); }catch(e){ return; }
   if(!r) return;
   // تەنها وەڵامی ok:false واتە تۆکن بەسەرچووە؛ هەڵەی کاتی نابێت گەیەنەر بباتە دەرەوە
-  if(r.ok===false){ clearInterval(timer); try{sessionStorage.removeItem("mln_drv");}catch(e){} $("login").hidden=false; $("app").hidden=true; return; }
+  if(r.ok===false){ clearInterval(timer); try{localStorage.removeItem("mln_drv");}catch(e){} $("login").hidden=false; $("app").hidden=true; return; }
   if(!r.ok) return;
   const orders=r.orders||[];
-  mine=orders.filter(o=>o.status==="accepted"); allOrders=orders; gpsSync(mine.length>0); syncMap(); sendPos();
+  mine=orders.filter(o=>o.status==="accepted"); allOrders=orders;
+  // ژمارەی هەر داواکارییەکی چاوەڕوان، هەمان ژمارەی سەر نەخشەیە
+  pendNo={}; orders.filter(o=>o.status==="pending").forEach((o,i)=>pendNo[o.num]=i+1);
+  gpsSync(mine.length>0); syncMap(); sendPos();
   const pend=orders.filter(o=>o.status==="pending").length;
   if(started && pend>lastPending) bell();
   lastPending=pend; started=true;
+  const busy=orders.some(o=>o.status==="accepted");
   $("list").innerHTML = orders.length ? orders.map(o=>{
     const mine=o.status==="accepted";
     const items=(o.items||[]).map(x=>`${esc(x.n)} × ${x.q}${x.note?` <span class="dist">📝 ${esc(x.note)}</span>`:""}`).join("<br>")+(o.note?`<div class="dist">📝 ${esc(o.note)}</div>`:"");
     const map=(o.lat&&o.lng)?`<a class="map" href="https://maps.google.com/?q=${o.lat},${o.lng}" target="_blank" rel="noopener">🗺️ شوێنی کڕیار لەسەر نەخشە</a>`:"";
-    return `<div class="card ${mine?'acc':''}">
-      <div class="chd"><span>${esc(o.num)} · ${o.t||""}</span><span class="badge ${mine?'mine':'new'}">${mine?'من دەیبەم':'نوێ 🔔'}</span></div>
+    return `<div class="card ${mine?'acc':''}" id="card-${esc(o.num)}">
+      <div class="chd"><span>${pendNo[o.num]?`<span class="pno">${pendNo[o.num]}</span>`:""}${esc(o.num)} · ${o.t||""}</span><span class="badge ${mine?'mine':'new'}">${mine?'من دەیبەم':'نوێ 🔔'}</span></div>
       <div class="items">${items}</div>
       <div class="meta">👤 ${esc(o.cust_name)} · 📞 ${esc(o.cust_phone)}</div>
       <div class="meta">📍 ${esc(o.address)}</div>${(pos&&o.lat&&o.lng)?`<div class="dist">📏 ${fmtKm(km(pos.lat,pos.lng,o.lat,o.lng))} لێتەوە</div>`:""}${map}
       ${mine?(()=>{ const un=Math.max(0,(o.msgs||0)-(+localStorage.getItem("mln_dseen_"+o.num)||0)); return `<div style="display:flex;gap:8px;margin-top:8px"><a class="btn ghost sm" style="flex:1;text-align:center;text-decoration:none" href="tel:${esc(String(o.cust_phone||"").replace(/[^0-9+]/g,""))}">📞 پەیوەندی</a><button class="btn ghost sm" style="flex:1" data-chat="${esc(o.num)}">💬 چات${un?`<span class="cbd">${un}</span>`:""}</button></div>`; })():""}
-      <div class="foot"><b>${money(o.total)}</b>${mine?`<button class="btn ok sm" data-deliver="${esc(o.num)}">✅ گەیاندرا</button>`:`<button class="btn sm" data-take="${esc(o.num)}">🛵 من دەیبەم</button>`}</div>
+      <div class="foot"><b>${money(o.total)}</b>${mine?`<button class="btn ok sm" data-deliver="${esc(o.num)}">✅ گەیاندرا</button>`:busy?`<span class="meta">سەرەتا داواکارییەکەت بگەیەنە</span>`:`<button class="btn sm" data-take="${esc(o.num)}">🛵 من دەیبەم</button>`}</div>
     </div>`;
   }).join("") : `<div class="empty">ئێستا داواکاری نییە. چاوەڕێ بکە 🛵</div>`;
-  $("list").querySelectorAll("[data-take]").forEach(b=>b.onclick=async()=>{ b.disabled=true; const r2=await rpc("accept_order",{p_name:me.name,p_pin:me.pin,p_num:b.dataset.take}); if(r2&&r2.ok){ follow=true; window.scrollTo({top:0,behavior:"smooth"}); loop(); } else{ alert(r2&&r2.error==="taken"?"ئەم داواکارییە وەرگیراوە.":"نەکرا."); loop(); } });
+  $("list").querySelectorAll("[data-take]").forEach(b=>b.onclick=async()=>{ b.disabled=true; const r2=await rpc("accept_order",{p_name:me.name,p_pin:me.pin,p_num:b.dataset.take}); if(r2&&r2.ok){ follow=true; window.scrollTo({top:0,behavior:"smooth"}); loop(); } else{ alert(r2&&r2.error==="taken"?"ئەم داواکارییە وەرگیراوە.":r2&&r2.error==="busy"?"سەرەتا داواکارییەکەی ئێستات بگەیەنە، پاشان داواکاری نوێ وەربگرە.":"نەکرا."); loop(); } });
   $("list").querySelectorAll("[data-chat]").forEach(b=>b.onclick=()=>openChat(b.dataset.chat));
   $("list").querySelectorAll("[data-deliver]").forEach(b=>b.onclick=async()=>{ b.disabled=true; await rpc("deliver_order",{p_name:me.name,p_pin:me.pin,p_num:b.dataset.deliver}); loop(); });
 }
 // نەخشەکەت هەمیشە شوێنی خۆت نیشان دەدات؛ شوێن تەنها کاتی گەیاندن بۆ کڕیار دەنێردرێت
-let watchId=null, lastSent=0, pos=null, fixAt=0, wake=null, delivering=false, mine=[], allOrders=[];
+let watchId=null, lastSent=0, pos=null, fixAt=0, wake=null, delivering=false, mine=[], allOrders=[], pendNo={};
 let leaflet=null, map=null, dMark=null, accC=null, routeLine=null, homes={}, follow=true, route=null, routeNum=null, routeAt=0, routeFrom=null, routeBusy=false;
 const km = (a,b,c,d) => { const t=x=>x*Math.PI/180, h=Math.pow(Math.sin(t(c-a)/2),2)+Math.cos(t(a))*Math.cos(t(c))*Math.pow(Math.sin(t(d-b)/2),2); return 12742*Math.asin(Math.sqrt(h)); };
 const fmtKm = k => k<1 ? `${Math.round(k*1000)} م` : `${k.toFixed(1)} کم`;
@@ -271,7 +278,7 @@ async function ensureMap(){
   let L; try{ L=await loadLeaflet(); }catch(e){ return null; }
   if(!map){
     $("mapw").hidden=false;
-    map=L.map("dmap").setView(pos?[pos.lat,pos.lng]:[36.19,44.01],16);
+    map=L.map("dmap").setView(pos?[pos.lat,pos.lng]:[36.5136,43.5977],14);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);
     satCtl(L,map);
     map.on("dragstart",()=>follow=false);
@@ -337,7 +344,14 @@ async function syncMap(){
   const L=await ensureMap(); if(!L) return;
   Object.keys(homes).forEach(n=>{ if(!with_.some(o=>o.num===n)){ homes[n].remove(); delete homes[n]; } });
   let added=false;
-  with_.forEach(o=>{ if(!homes[o.num]){ homes[o.num]=L.marker([o.lat,o.lng],{icon:mkIcon(L,"🏠")}).bindTooltip(o.num).addTo(map); added=true; } });
+  // پێش وەرگرتن هەر داواکارییەک ژمارەی خۆی هەیە، کلیک لەسەری کارتەکەی دەدۆزێتەوە
+  with_.forEach(o=>{
+    const no=!mine.length&&pendNo[o.num], tip=`${o.num} · ${money(o.total)}${pos?` · ${fmtKm(km(pos.lat,pos.lng,o.lat,o.lng))}`:""}`;
+    if(!homes[o.num]){
+      homes[o.num]=L.marker([o.lat,o.lng],{icon:mkIcon(L,no||"🏠",no?"num":"")}).bindTooltip(tip).addTo(map); added=true;
+      homes[o.num].on("click",()=>{ const c=$("card-"+o.num); if(c){ c.scrollIntoView({behavior:"smooth",block:"center"}); c.classList.add("flash"); setTimeout(()=>c.classList.remove("flash"),1500); } });
+    } else { homes[o.num].setIcon(mkIcon(L,no||"🏠",no?"num":"")); homes[o.num].setTooltipContent(tip); }
+  });
   if(added&&follow) fitAll();
   if(!t){ if(routeLine){ routeLine.remove(); routeLine=null; } route=null; routeNum=null; routePts=[]; return; }
   if(pos){

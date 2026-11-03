@@ -132,8 +132,33 @@ body.gated{overflow:hidden}
 .trk{margin:12px 0}.trk-row{border-radius:14px;padding:14px;font-weight:800;text-align:center}
 .trk-row.pend{background:var(--soft);color:var(--brand)}.trk-row.acc{background:rgba(21,163,90,.14);color:var(--ok)}.trk-row.del{background:rgba(21,163,90,.2);color:var(--ok)}
 .trk-row.can{background:rgba(226,59,46,.12);color:var(--brand)}
-.pf{margin:8px 16px 0;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px 12px 10px}
-.pf div{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.9rem}.pf span{color:var(--muted)}
+#viewProfile{padding-bottom:20px}
+.ph{background:linear-gradient(150deg,var(--brand),var(--brand2));color:#fff;text-align:center;padding:30px 16px 54px;border-radius:0 0 30px 30px}
+.ph b{display:block;font-family:var(--fd);font-size:1.35rem;font-weight:900;margin-top:10px}.ph small{opacity:.9;font-size:.85rem}
+.av2{width:84px;height:84px;border-radius:50%;margin:0 auto;background:#fff;color:var(--brand);display:grid;place-items:center;font-size:2.2rem;font-weight:900;box-shadow:0 0 0 5px rgba(255,255,255,.35),0 12px 26px rgba(0,0,0,.18);overflow:hidden}
+.av2 img{width:100%;height:100%;object-fit:cover}
+.pcard{margin:12px 16px 0;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:8px 14px 12px;box-shadow:0 8px 22px -16px rgba(60,20,0,.35)}
+.ph+.pcard{margin-top:-34px;position:relative}
+.prow{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:.92rem}.prow span{color:var(--muted)}
+.pcard .lang{justify-content:flex-start;margin:8px 0 0}
+.plinks{display:grid;padding:4px 14px}.plinks a{color:var(--ink);text-decoration:none;font-weight:700;padding:11px 0;border-bottom:1px solid var(--line)}.plinks a:last-child{border:0}.plinks a.red{color:#e11d48}
+.pout{width:calc(100% - 32px)!important;margin:12px 16px 0!important}
+#splash{position:fixed;inset:0;z-index:200;display:grid;place-items:center;align-content:center;gap:18px;background:linear-gradient(150deg,var(--brand),var(--brand2));color:#fff;transition:opacity .45s ease,visibility .45s}
+#splash.out{opacity:0;visibility:hidden}
+#splash .lg{position:relative;width:112px;height:112px}
+#splash .lg img{width:112px;height:112px;border-radius:30px;box-shadow:0 18px 40px rgba(0,0,0,.25);animation:spPop .9s cubic-bezier(.2,1.4,.4,1) both;position:relative}
+#splash .lg i{position:absolute;inset:0;border-radius:34px;border:3px solid rgba(255,255,255,.7);animation:spRing 1.4s ease-out .3s infinite}
+#splash b{font-family:var(--fd);font-weight:900;font-size:1.7rem;letter-spacing:.5px;animation:spUp .7s ease .35s both}
+#splash small{opacity:.9;font-weight:700;animation:spUp .7s ease .5s both}
+@keyframes spPop{0%{transform:scale(.3) rotate(-12deg);opacity:0}70%{transform:scale(1.08) rotate(3deg);opacity:1}100%{transform:scale(1) rotate(0)}}
+@keyframes spRing{0%{transform:scale(1);opacity:.8}100%{transform:scale(1.6);opacity:0}}
+@keyframes spUp{0%{transform:translateY(14px);opacity:0}100%{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){#splash *{animation:none!important}}
+.item{box-shadow:0 8px 20px -16px rgba(60,20,0,.4);transition:transform .15s ease}.item:active{transform:scale(.98)}
+.hero{border-radius:0 0 26px 26px;padding-bottom:20px}
+.hero .logo{object-fit:cover;box-shadow:0 6px 16px rgba(0,0,0,.18)}
+.bnav{grid-template-columns:1fr 1fr 1fr!important;box-shadow:0 -6px 20px -14px rgba(0,0,0,.3)}
+.bnav button i{width:44px;margin:0 auto 2px;border-radius:99px;transition:background .2s}.bnav button[aria-pressed=true] i{background:var(--soft)}
 .tact{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.tact .btn{margin:0;padding:12px 8px;font-size:.92rem;text-align:center;text-decoration:none}.tact .btn:only-child{grid-column:1/-1}
 .cbd{background:var(--brand);color:#fff;border-radius:99px;padding:0 7px;font-size:.75rem;margin-inline-start:4px}
 .chat{display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow:auto;padding:4px 2px 10px}
@@ -170,6 +195,7 @@ body.gated{overflow:hidden}
 <script src="i18n.js"></script>
 </head>
 <body>
+<div id="splash"><div class="lg"><i></i><img src="icons/customer-192.png" alt=""></div><b>Melano Fast Food</b><small>🍔 🍟 🍕</small></div>
 <div id="gate" hidden>
   <div class="g-in">
     <div class="lang"><button data-lang="ku">کوردی</button><button data-lang="ar">العربية</button><button data-lang="en">English</button></div>
@@ -208,14 +234,15 @@ body.gated{overflow:hidden}
 <div class="wrap">
   <div id="viewOrders" hidden>
     <div class="ohead">📦 داواکارییەکانم</div>
+    <div class="olist" id="olist"></div>
+  </div>
+  <div id="viewProfile" hidden>
     <div id="acct"></div>
     <div id="install"></div>
-    <div class="olist" id="olist"></div>
-    <p class="hint" style="padding:6px 16px"><a href="privacy.html" style="color:var(--muted)">سیاسەتی تایبەتمەندی</a></p>
   </div>
   <div id="viewMenu">
   <header class="hero">
-    <div class="b"><div class="logo">🍔</div><div><h1 id="shopName">Melano Fast Food</h1><p id="shopTag"></p></div></div>
+    <div class="b"><img class="logo" src="icons/customer-192.png" alt=""><div><h1 id="shopName">Melano Fast Food</h1><p id="shopTag"></p></div></div>
     <div class="info" id="shopInfo"></div>
   </header>
   <div class="closed" id="closedBar" hidden>🔴 ئێستا داخراوین · دەتوانیت مینیو ببینیت، بەڵام ناتوانیت داواکاری بنێریت</div>
@@ -226,6 +253,7 @@ body.gated{overflow:hidden}
 <nav class="bnav">
   <button id="navMenu" aria-pressed="true"><i>🍔</i>مینیو</button>
   <button id="navOrders" aria-pressed="false"><i>📦</i>داواکارییەکانم<span class="bd" id="ordBd" hidden></span></button>
+  <button id="navProfile" aria-pressed="false"><i>👤</i>پرۆفایل</button>
 </nav>
 <button class="fab" id="fab" hidden><span class="c" id="fabCount">0</span><span>سەبەتە</span><span id="fabTotal">0</span></button>
 <button class="chip" id="chip" hidden></button>
@@ -445,10 +473,14 @@ function iraqPhone(v){
 function paintAcct(){
   const el=$("acct"); if(!el) return;
   if(session){
-    el.innerHTML=`<div class="acct">${safeImg(session.pic)?`<img src="${esc(session.pic)}" alt="" referrerpolicy="no-referrer">`:`<span class="av">👤</span>`}<div class="an"><b>${esc((profile&&profile.name)||session.name||"هەژمارەکەم")}</b><small>${esc(session.email)}</small></div><button class="btn ghost" id="outBtn">دەرچوون</button></div>${profile?`<div class="pf"><div><span>ژمارەی مۆبایل</span><b dir="ltr">${esc(localPhone(profile.phone))}</b></div><div><span>ڕەگەز</span><b>${profile.gender==="f"?"کچ":"کوڕ"}</b></div><div><span>ڕێکەوتی لەدایکبوون</span><b dir="ltr">${esc(profile.birth)}</b></div><button class="btn ghost" id="pfEdit">✏️ دەستکاری پرۆفایل</button></div>`:""}<div class="lang" style="margin-top:10px"><button data-lang="ku">کوردی</button><button data-lang="ar">العربية</button><button data-lang="en">English</button></div><p class="hint"><a href="#" id="profBtn" style="color:var(--muted)">پرۆفایل</a> · <a href="#" id="delAcct" style="color:var(--muted)">سڕینەوەی هەژمار</a></p>`;
+    const nm=(profile&&profile.name)||session.name||"هەژمارەکەم";
+    el.innerHTML=`<div class="ph"><div class="av2">${safeImg(session.pic)?`<img src="${esc(session.pic)}" alt="" referrerpolicy="no-referrer">`:`<span>${esc([...nm][0]||"👤")}</span>`}</div><b>${esc(nm)}</b><small>${esc(session.email)}</small></div>
+      <div class="pcard">${profile?`<div class="prow"><span>📱 ژمارەی مۆبایل</span><b dir="ltr">${esc(localPhone(profile.phone))}</b></div><div class="prow"><span>👤 ڕەگەز</span><b>${profile.gender==="f"?"کچ":"کوڕ"}</b></div><div class="prow"><span>🎂 ڕێکەوتی لەدایکبوون</span><b dir="ltr">${esc(profile.birth)}</b></div>`:""}<button class="btn ghost" id="pfEdit">✏️ دەستکاری پرۆفایل</button></div>
+      <div class="pcard"><div class="prow"><span>🌐 زمان</span></div><div class="lang"><button data-lang="ku">کوردی</button><button data-lang="ar">العربية</button><button data-lang="en">English</button></div></div>
+      <div class="pcard plinks"><a href="privacy.html">🔒 سیاسەتی تایبەتمەندی</a><a href="terms.html">📄 مەرجەکان</a><a href="#" id="delAcct" class="red">🗑️ سڕینەوەی هەژمار</a></div>
+      <button class="btn ghost pout" id="outBtn">دەرچوون</button>`;
     $("outBtn").onclick=()=>{ signOut(); loadOrders(); };
-    $("profBtn").onclick=e=>{ e.preventDefault(); openProfile(); };
-    if($("pfEdit")) $("pfEdit").onclick=openProfile;
+    $("pfEdit").onclick=openProfile;
     if(window.setLang) document.querySelectorAll("#acct [data-lang]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lang===(localStorage.getItem("mln_lang")||"ku")));
     $("delAcct").onclick=async e=>{
       e.preventDefault();
@@ -756,12 +788,12 @@ async function syncOrders(){
 }
 function setView(v){
   const orders=v==="orders";
-  $("viewMenu").hidden=orders; $("viewOrders").hidden=!orders;
-  $("navMenu").setAttribute("aria-pressed",String(!orders)); $("navOrders").setAttribute("aria-pressed",String(orders));
-  document.body.classList.toggle("orders",orders); window.scrollTo(0,0);
+  [["menu","viewMenu","navMenu"],["orders","viewOrders","navOrders"],["profile","viewProfile","navProfile"]].forEach(([k,view,nav])=>{ $(view).hidden=k!==v; $(nav).setAttribute("aria-pressed",String(k===v)); });
+  document.body.classList.toggle("orders",v!=="menu"); window.scrollTo(0,0);
   if(orders) loadOrders();
+  if(v==="profile") paintAcct();
 }
-$("navMenu").onclick=()=>setView("menu"); $("navOrders").onclick=()=>setView("orders");
+$("navMenu").onclick=()=>setView("menu"); $("navOrders").onclick=()=>setView("orders"); $("navProfile").onclick=()=>setView("profile");
 const OST={pending:"🕐 چاوەڕوان",accepted:"🛵 لە ڕێگایە",delivered:"✅ گەیەنرا",cancelled:"❌ هەڵوەشێنرا"};
 let ordersBusy=false, autoOpened=false;
 async function loadOrders(){
@@ -951,6 +983,14 @@ $("chatX").onclick=closeChat;
 $("chatOv").onclick=e=>{ if(e.target.id==="chatOv") closeChat(); };
 $("chatGo").onclick=sendChat;
 $("chatIn").onkeydown=e=>{ if(e.key==="Enter") sendChat(); };
+
+// ===== لۆگۆی جووڵاو کاتی کردنەوەی ئەپ؛ تەنها یەک جار بۆ هەر کردنەوەیەک =====
+(function splash(){
+  const s=$("splash"); if(!s) return;
+  if(SS.get("mln_splash")){ s.remove(); return; }
+  SS.set("mln_splash","1");
+  setTimeout(()=>{ s.classList.add("out"); setTimeout(()=>s.remove(),500); },1500);
+})();
 
 // داواکاری چالاکی وەشانی پێشوو دەگوازرێتەوە بۆ لیستەکە
 (function migrate(){
