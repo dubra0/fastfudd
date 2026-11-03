@@ -215,8 +215,8 @@ body.gated{overflow:hidden}
     <h1 class="g-title">پرۆفایلەکەت تەواو بکە</h1>
     <div class="field"><label for="pfName">ناوی تەواو</label><input id="pfName" autocomplete="name" maxlength="60"></div>
     <div class="field"><label for="pfPhone">ژمارەی مۆبایل</label><input id="pfPhone" type="tel" inputmode="tel" autocomplete="tel" dir="ltr" placeholder="0750 123 4567"></div>
-    <div class="field"><label>ڕەگەز</label><div class="g-sex"><label><input type="radio" name="pfSex" value="m"><span>کوڕ</span></label><label><input type="radio" name="pfSex" value="f"><span>کچ</span></label></div></div>
-    <div class="field"><label for="pfBirth">ڕێکەوتی لەدایکبوون</label><input id="pfBirth" type="date" dir="ltr" min="1900-01-01"></div>
+    <div class="field"><label>ڕەگەز <small class="hint">(ئارەزوومەندانە)</small></label><div class="g-sex"><label><input type="radio" name="pfSex" value="m"><span>کوڕ</span></label><label><input type="radio" name="pfSex" value="f"><span>کچ</span></label></div></div>
+    <div class="field"><label for="pfBirth">ڕێکەوتی لەدایکبوون <small class="hint">(ئارەزوومەندانە)</small></label><input id="pfBirth" type="date" dir="ltr" min="1900-01-01"></div>
     <p class="hint" id="pfMsg" style="margin-bottom:8px"></p>
     <button class="btn go" id="pfSave">پاشەکەوتکردن</button>
   </div>
@@ -351,13 +351,14 @@ function openProfile(){
 $("pfSave").onclick=async()=>{
   const name=$("pfName").value.trim(), phone=iraqPhone($("pfPhone").value), sex=(document.querySelector('[name="pfSex"]:checked')||{}).value, birth=$("pfBirth").value;
   const say=m=>{ $("pfMsg").textContent=m; $("pfMsg").style.color="var(--brand)"; };
-  if(name.length<2||!sex||!birth){ say("تکایە هەموو خانەکان پڕ بکەرەوە."); return; }
+  if(name.length<2){ say("تکایە ناوەکەت بنووسە."); return; }
   if(!phone){ say("ژمارەی مۆبایل دروست نییە."); return; }
   $("pfSave").disabled=true;
-  let r; try{ r=await rpc("save_profile",{p_name:name,p_phone:phone,p_gender:sex,p_birth:birth}); }catch(e){ r=null; }
+  // ڕەگەز و لەدایکبوون ئارەزوومەندانەن، بەتاڵ وەک null دەنێردرێن
+  let r; try{ r=await rpc("save_profile",{p_name:name,p_phone:phone,p_gender:sex||null,p_birth:birth||null}); }catch(e){ r=null; }
   $("pfSave").disabled=false;
   if(!r||!r.ok){ say(r&&r.error==="fields"?"تکایە هەموو خانەکان پڕ بکەرەوە.":"نەکرا. ئینتەرنێت بپشکنە و دووبارە هەوڵ بدەرەوە."); return; }
-  profile={name,phone,gender:sex,birth}; keepCust(); $("profGate").hidden=true; paintAcct(); autoGeo();
+  profile={name,phone,gender:sex||null,birth:birth||null}; keepCust(); $("profGate").hidden=true; paintAcct(); autoGeo();
 };
 function askLogin(){ guest=false; paintGate(); }
 // ===== لۆکەیشن: هەر جارێک ئەپ بکرێتەوە خۆی دەیگرێت؛ بێ شوێن ناتوانرێت بەردەوام بێت =====
@@ -484,7 +485,7 @@ function paintAcct(){
   if(session){
     const nm=(profile&&profile.name)||session.name||"هەژمارەکەم";
     el.innerHTML=`<div class="ph"><div class="av2">${safeImg(session.pic)?`<img src="${esc(session.pic)}" alt="" referrerpolicy="no-referrer">`:`<span>${esc([...nm][0]||"👤")}</span>`}</div><b>${esc(nm)}</b><small>${esc(session.email)}</small></div>
-      <div class="pcard">${profile?`<div class="prow"><span>📱 ژمارەی مۆبایل</span><b dir="ltr">${esc(localPhone(profile.phone))}</b></div><div class="prow"><span>👤 ڕەگەز</span><b>${profile.gender==="f"?"کچ":"کوڕ"}</b></div><div class="prow"><span>🎂 ڕێکەوتی لەدایکبوون</span><b dir="ltr">${esc(profile.birth)}</b></div>`:""}<button class="btn ghost" id="pfEdit">✏️ دەستکاری پرۆفایل</button></div>
+      <div class="pcard">${profile?`<div class="prow"><span>📱 ژمارەی مۆبایل</span><b dir="ltr">${esc(localPhone(profile.phone))}</b></div>${profile.gender?`<div class="prow"><span>👤 ڕەگەز</span><b>${profile.gender==="f"?"کچ":"کوڕ"}</b></div>`:""}${profile.birth?`<div class="prow"><span>🎂 ڕێکەوتی لەدایکبوون</span><b dir="ltr">${esc(profile.birth)}</b></div>`:""}`:""}<button class="btn ghost" id="pfEdit">✏️ دەستکاری پرۆفایل</button></div>
       ${pushRow()}
       <div class="pcard"><div class="prow"><span>🌐 زمان</span></div><div class="lang"><button data-lang="ku">کوردی</button><button data-lang="ar">العربية</button><button data-lang="en">English</button></div></div>
       <div class="pcard plinks"><a href="privacy.html">🔒 سیاسەتی تایبەتمەندی</a><a href="terms.html">📄 مەرجەکان</a><a href="#" id="delAcct" class="red">🗑️ سڕینەوەی هەژمار</a></div>
