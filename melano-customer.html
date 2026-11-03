@@ -358,7 +358,7 @@ function signOut(){
   if(h.get("access_token")){ remember=true; LS.set("mln_keep","1"); setSession(h.get("access_token"),h.get("refresh_token")); justLogged=true; if(h.get("type")==="recovery") setTimeout(()=>openAuth("recovery")); history.replaceState(null,"",location.pathname+location.search); }
   // ئەگەر Google نەیتوانی بچێتە ژوورەوە، هۆکارەکە نیشان دەدرێت نەک بێدەنگ بگەڕێتەوە
   const q=new URLSearchParams(location.search), err=h.get("error_description")||q.get("error_description")||h.get("error")||q.get("error");
-  if(err){ history.replaceState(null,"",location.pathname); setTimeout(()=>{ const m=$("auMsg"); if(m){ m.textContent="چوونەژوورەوە بە Google نەکرا: "+err; m.style.color="var(--brand)"; } },300); }
+  if(err){ history.replaceState(null,"",location.pathname); setTimeout(()=>{ const m=$("auMsg"); if(m){ m.textContent=isDeletedErr(err)?DELETED_TXT:"چوونەژوورەوە بە Google نەکرا: "+err; m.style.color="var(--brand)"; } },300); }
 })();
 const SITE = () => location.href.split("#")[0].split("?")[0];
 async function authCall(path,method,body,token){
@@ -367,7 +367,10 @@ async function authCall(path,method,body,token){
   return {ok:r.ok,status:r.status,j};
 }
 const AUTH_ERR = {invalid_credentials:"ئیمەیڵ یان پاسوۆرد هەڵەیە.",email_not_confirmed:"سەرەتا ئیمەیڵەکەت پشتڕاست بکەرەوە. سەیری Inbox و Spam بکە.",user_already_exists:"ئەم ئیمەیڵە پێشتر تۆمار کراوە. بچۆ ژوورەوە.",email_exists:"ئەم ئیمەیڵە پێشتر تۆمار کراوە. بچۆ ژوورەوە.",weak_password:"پاسوۆرد لاوازە. پیت و ژمارە تێکەڵ بکە.",same_password:"پاسوۆردی نوێ دەبێت جیاواز بێت.",email_address_invalid:"ئیمەیڵەکە دروست نییە.",email_address_not_authorized:"ناردنی ئیمەیڵ هێشتا ڕێک نەخراوە. تکایە پەیوەندی بە چێشتخانە بکە.",signup_disabled:"تۆمارکردنی هەژماری نوێ ئێستا داخراوە."};
-const authErrText = x => x.status===429 ? "هەوڵی زۆر درا. تکایە چەند خولەکێکی تر هەوڵ بدەرەوە." : AUTH_ERR[x.j.error_code||x.j.code] || "نەکرا. ئینتەرنێت بپشکنە و دووبارە هەوڵ بدەرەوە.";
+// ئیمەیڵی هەژمارێکی سڕاوە لە داتابەیس ڕەت دەکرێتەوە (update22)، Supabase تەنها «Database error saving new user» دەگەڕێنێتەوە
+const DELETED_TXT="ئەم ئیمەیڵە هەژمارێکی سڕاوەی هەبووە و ناتوانرێت هەژماری نوێی پێ دروست بکرێت.";
+const isDeletedErr = s => /database error saving new user/i.test(String(s||""));
+const authErrText = x => x.status===429 ? "هەوڵی زۆر درا. تکایە چەند خولەکێکی تر هەوڵ بدەرەوە." : isDeletedErr(x.j.msg||x.j.message||x.j.error_description) ? DELETED_TXT : AUTH_ERR[x.j.error_code||x.j.code] || "نەکرا. ئینتەرنێت بپشکنە و دووبارە هەوڵ بدەرەوە.";
 const AUTH_T = {login:"چوونەژوورەوە",signup:"هەژماری نوێ",forgot:"لەبیرچوونی پاسوۆرد",recovery:"پاسوۆردی نوێ"};
 function paintSocial(){
   const el=$("gSocial"); if(!el) return;
@@ -376,7 +379,7 @@ function paintSocial(){
   $("gGoogle").onclick=()=>{ if(googleOn) googleLogin(); else { const m=$("auMsg"); if(m){ m.textContent="چوونەژوورەوە بە Google بەم زووانە چالاک دەبێت."; m.style.color="var(--brand)"; } } };
 }
 // بێ هەژمار تەنها پەڕەی بەخێرهاتن دەردەکەوێت
-const MAIL_READY=false;
+const MAIL_READY=true;
 // میوان دەتوانێت مینیو ببینێت؛ ناردنی داواکاری هەژماری دەوێت
 let guest=false;
 function paintGate(){
@@ -584,7 +587,7 @@ function paintAcct(){
     if($("pushBtn")) $("pushBtn").onclick=async()=>{ $("pushBtn").disabled=true; await pushOn(true); paintAcct(); };
     if(window.setLang) document.querySelectorAll("#acct [data-lang]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lang===(localStorage.getItem("mln_lang")||"ku")));
     $("delAcct").onclick=async()=>{
-      if(!confirm("هەژمارەکەت بە تەواوی دەسڕدرێتەوە و ناگەڕێتەوە. دڵنیایت؟")) return;
+      if(!confirm("هەژمارەکەت بە تەواوی دەسڕدرێتەوە و ناگەڕێتەوە، و ناتوانیت جارێکی تر بەم ئیمەیڵە هەژمار دروست بکەیتەوە. دڵنیایت؟")) return;
       let r; try{ r=await rpc("delete_my_account"); }catch(x){ r=null; }
       if(r&&r.ok){ signOut(); loadOrders(); alert("هەژمارەکەت سڕایەوە."); }
       else alert(r&&r.error==="active"?"تا داواکارییەکەت تەواو نەبێت، ناتوانیت هەژمارەکەت بسڕیتەوە.":"نەکرا. دووبارە هەوڵ بدەرەوە.");

@@ -2,7 +2,7 @@
 // ناوی خواردن و بەش لە مینیوی چێشتخانەوە دێن و وەک خۆیان دەمێننەوە.
 (function(){
   const D = [
-    ["هەژمارەکەت بە تەواوی دەسڕدرێتەوە و ناگەڕێتەوە. دڵنیایت؟","Your account will be permanently deleted and cannot be restored. Are you sure?","سيتم حذف حسابك نهائيًا ولا يمكن استعادته. هل أنت متأكد؟"],
+    ["هەژمارەکەت بە تەواوی دەسڕدرێتەوە و ناگەڕێتەوە، و ناتوانیت جارێکی تر بەم ئیمەیڵە هەژمار دروست بکەیتەوە. دڵنیایت؟","Your account will be permanently deleted and cannot be restored, and this email cannot be used for a new account. Are you sure?","سيتم حذف حسابك نهائيًا ولا يمكن استعادته، ولا يمكن استخدام هذا البريد لحساب جديد. هل أنت متأكد؟"],
     ["🔴 ئێستا داخراوین · دەتوانیت مینیو ببینیت، بەڵام ناتوانیت داواکاری بنێریت","🔴 We are closed now · You can view the menu but cannot order","🔴 مغلق الآن · يمكنك مشاهدة القائمة لكن لا يمكنك الطلب"],
     ["بچۆ ژوورەوە بۆ ئەوەی داواکارییەکانت لەسەر هەر مۆبایلێک ببینیت. بێ هەژماریش دەتوانیت داواکاری بنێریت.","Log in to see your orders on any phone.","سجّل الدخول لمشاهدة طلباتك على أي هاتف."],
     ["لە iPhone: Settings › Privacy & Security › Location Services هەڵبکە و Safari Websites بکە While Using the App، پاشان پەڕەکە Refresh بکە.","On iPhone: turn on Settings › Privacy & Security › Location Services, set Safari Websites to While Using the App, then refresh this page.","في iPhone: فعّل Settings › Privacy & Security › Location Services واجعل Safari Websites على While Using the App ثم حدّث الصفحة."],
@@ -204,6 +204,7 @@
     // پرۆفایل
     ["تکایە هەموو خانەکان پڕ بکەرەوە.","Please fill in all fields.","يرجى ملء جميع الحقول."],
     ["تکایە ناوەکەت بنووسە.","Please enter your name.","يرجى كتابة اسمك."],
+    ["ئەم ئیمەیڵە هەژمارێکی سڕاوەی هەبووە و ناتوانرێت هەژماری نوێی پێ دروست بکرێت.","This email belonged to a deleted account and cannot be used for a new account.","هذا البريد كان لحساب محذوف ولا يمكن إنشاء حساب جديد به."],
     ["زانیاری کەسی","Personal info","المعلومات الشخصية"],
     ["ڕێکخستن","Settings","الإعدادات"],
     ["یارمەتی","Help","المساعدة"],
