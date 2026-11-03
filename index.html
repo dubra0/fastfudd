@@ -132,28 +132,63 @@ body.gated{overflow:hidden}
 .trk{margin:12px 0}.trk-row{border-radius:14px;padding:14px;font-weight:800;text-align:center}
 .trk-row.pend{background:var(--soft);color:var(--brand)}.trk-row.acc{background:rgba(21,163,90,.14);color:var(--ok)}.trk-row.del{background:rgba(21,163,90,.2);color:var(--ok)}
 .trk-row.can{background:rgba(226,59,46,.12);color:var(--brand)}
-#viewProfile{padding-bottom:20px}
-.ph{background:linear-gradient(150deg,var(--brand),var(--brand2));color:#fff;text-align:center;padding:30px 16px 54px;border-radius:0 0 30px 30px}
-.ph b{display:block;font-family:var(--fd);font-size:1.35rem;font-weight:900;margin-top:10px}.ph small{opacity:.9;font-size:.85rem}
-.av2{width:84px;height:84px;border-radius:50%;margin:0 auto;background:#fff;color:var(--brand);display:grid;place-items:center;font-size:2.2rem;font-weight:900;box-shadow:0 0 0 5px rgba(255,255,255,.35),0 12px 26px rgba(0,0,0,.18);overflow:hidden}
-.av2 img{width:100%;height:100%;object-fit:cover}
-.pcard{margin:12px 16px 0;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:8px 14px 12px;box-shadow:0 8px 22px -16px rgba(60,20,0,.35)}
-.ph+.pcard{margin-top:-34px;position:relative}
-.prow{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:.92rem}.prow span{color:var(--muted)}
-.pcard .lang{justify-content:flex-start;margin:8px 0 0}
-.plinks{display:grid;padding:4px 14px}.plinks a{color:var(--ink);text-decoration:none;font-weight:700;padding:11px 0;border-bottom:1px solid var(--line)}.plinks a:last-child{border:0}.plinks a.red{color:#e11d48}
-.pout{width:calc(100% - 32px)!important;margin:12px 16px 0!important}
-#splash{position:fixed;inset:0;z-index:200;display:grid;place-items:center;align-content:center;gap:18px;background:linear-gradient(150deg,var(--brand),var(--brand2));color:#fff;transition:opacity .45s ease,visibility .45s}
-#splash.out{opacity:0;visibility:hidden}
-#splash .lg{position:relative;width:112px;height:112px}
-#splash .lg img{width:112px;height:112px;border-radius:30px;box-shadow:0 18px 40px rgba(0,0,0,.25);animation:spPop .9s cubic-bezier(.2,1.4,.4,1) both;position:relative}
-#splash .lg i{position:absolute;inset:0;border-radius:34px;border:3px solid rgba(255,255,255,.7);animation:spRing 1.4s ease-out .3s infinite}
-#splash b{font-family:var(--fd);font-weight:900;font-size:1.7rem;letter-spacing:.5px;animation:spUp .7s ease .35s both}
-#splash small{opacity:.9;font-weight:700;animation:spUp .7s ease .5s both}
-@keyframes spPop{0%{transform:scale(.3) rotate(-12deg);opacity:0}70%{transform:scale(1.08) rotate(3deg);opacity:1}100%{transform:scale(1) rotate(0)}}
-@keyframes spRing{0%{transform:scale(1);opacity:.8}100%{transform:scale(1.6);opacity:0}}
-@keyframes spUp{0%{transform:translateY(14px);opacity:0}100%{transform:none;opacity:1}}
-@media (prefers-reduced-motion:reduce){#splash *{animation:none!important}}
+#viewProfile{padding-bottom:96px}
+/* پرۆفایل */
+.ph{position:relative;color:#fff;text-align:center;padding:22px 18px 70px;overflow:hidden;background:linear-gradient(160deg,var(--brand2),var(--brand) 70%)}
+.ph::after{content:"";position:absolute;inset:auto -20% -60px;height:120px;background:var(--bg);border-radius:50%}
+.ph-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;position:relative;z-index:1}
+.ph-mini{display:flex;align-items:center;gap:8px;font-family:var(--fd);font-weight:800;letter-spacing:.05em;direction:ltr}.ph-mini svg{width:30px;height:30px}
+.ph-ed{width:38px;height:38px;border-radius:12px;border:0;background:rgba(255,255,255,.18);color:#fff;display:grid;place-items:center;cursor:pointer}
+.av2{position:relative;z-index:1;width:92px;height:92px;margin:0 auto;border-radius:50%;background:#fff;color:var(--brand);display:grid;place-items:center;font-size:2.4rem;font-weight:900;box-shadow:0 12px 26px rgba(0,0,0,.2)}
+.av2::before{content:"";position:absolute;inset:-7px;border-radius:50%;border:3px solid rgba(255,255,255,.55);border-top-color:#ffc93c;animation:avSpin 3s linear infinite}
+.av2 img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+@keyframes avSpin{to{transform:rotate(360deg)}}
+.ph b{position:relative;z-index:1;display:block;font-size:1.25rem;font-weight:900;margin:14px 0 2px}
+.ph small{position:relative;z-index:1;display:block;font-size:.84rem;opacity:.9;direction:ltr}
+.pstats{position:relative;z-index:2;margin:-48px 16px 0;display:grid;grid-template-columns:repeat(3,1fr);background:var(--panel);border:1px solid var(--line);border-radius:20px;box-shadow:0 14px 30px -18px rgba(90,30,10,.35)}
+.pstat{padding:14px 6px;text-align:center;display:grid;gap:2px}.pstat+.pstat{border-inline-start:1px solid var(--line)}
+.pstat strong{font-family:var(--fd);font-size:1.3rem;color:var(--brand);font-variant-numeric:tabular-nums}
+.pstat span{color:var(--muted);font-size:.74rem}
+.psec{margin:20px 16px 0}
+.psec h3{font-size:.8rem;color:var(--muted);font-weight:800;margin:0 6px 8px}
+.pcard{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:56px;width:100%;background:none;border:0;font:inherit;color:inherit;text-align:start;text-decoration:none}
+.prow+.prow{border-top:1px solid var(--line)}
+a.prow,button.prow{cursor:pointer}a.prow:active,button.prow:active{background:var(--soft)}
+.pic2{width:36px;height:36px;border-radius:11px;background:var(--soft);color:var(--brand);display:grid;place-items:center;flex:none}.pic2 svg{width:19px;height:19px}
+.plbl{flex:1;min-width:0;font-weight:700;font-size:.93rem}
+.plbl .hint{display:block;font-weight:500;font-size:.78rem;margin:2px 0 0}
+.pval{color:var(--muted);font-size:.88rem;font-weight:700;font-style:normal}
+.pchev{color:var(--muted);width:16px;height:16px;flex:none}
+.pon{color:var(--ok);font-weight:800;font-size:.85rem}
+.prow .btn{width:auto;padding:8px 14px;font-size:.82rem;flex:none}
+#acct .lang{margin:0;gap:2px;background:var(--soft);border-radius:11px;padding:3px;flex:none}
+#acct .lang button{border:0;background:none;padding:6px 9px;border-radius:9px;font-size:.76rem}
+#acct .lang button[aria-pressed=true]{background:var(--panel);color:var(--brand);box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.pout{width:calc(100% - 32px)!important;margin:22px 16px 0!important}
+.pdel{display:block;margin:14px auto 0;background:none;border:0;color:#e11d48;font:inherit;font-size:.84rem;font-weight:700;cursor:pointer}
+.pver{text-align:center;color:var(--muted);font-size:.72rem;margin:14px 0 0;font-family:var(--fd)}
+/* لۆگۆی جووڵاو */
+#splash{position:fixed;inset:0;z-index:200;display:grid;place-items:center;align-content:center;gap:16px;background:radial-gradient(120% 80% at 50% 35%,#ff7a1a 0%,#e23b2e 55%,#b8231a 100%);color:#fff}
+#splash.out{animation:spOut .55s cubic-bezier(.7,0,.3,1) forwards}
+@keyframes spOut{to{transform:translateY(-100%);border-radius:0 0 50% 50%}}
+#splash .mk{width:132px;height:132px;animation:spPop .7s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes spPop{0%{transform:scale(0) rotate(-14deg)}100%{transform:scale(1) rotate(0)}}
+#splash .ly{transform-box:fill-box;transform-origin:center;animation:spDrop .5s cubic-bezier(.3,1.5,.5,1) both}
+#splash .l1{animation-delay:.35s}#splash .l2{animation-delay:.5s}#splash .l3{animation-delay:.62s}#splash .l4{animation-delay:.76s}
+@keyframes spDrop{0%{transform:translateY(-60px);opacity:0}60%{opacity:1}100%{transform:none;opacity:1}}
+#splash .sd{transform-box:fill-box;transform-origin:center;animation:spSeed .3s ease-out both}
+@keyframes spSeed{0%{transform:scale(0)}70%{transform:scale(1.5)}100%{transform:scale(1)}}
+#splash .st{stroke-dasharray:30;stroke-dashoffset:30;animation:spSteam 1.6s 1.15s ease-out infinite}
+@keyframes spSteam{0%{stroke-dashoffset:30;opacity:0}30%{opacity:.9}100%{stroke-dashoffset:-30;opacity:0}}
+#splash .wd{font-family:var(--fd);font-weight:900;font-size:2.5rem;letter-spacing:.06em;display:flex;direction:ltr;line-height:1}
+#splash .wd i{font-style:normal;display:inline-block;animation:spUp .5s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes spUp{0%{transform:translateY(26px);opacity:0}100%{transform:none;opacity:1}}
+#splash .tg{font-family:var(--fd);font-weight:600;font-size:.78rem;letter-spacing:.42em;direction:ltr;opacity:0;animation:spFade .5s 1.55s forwards;display:flex;align-items:center;gap:10px}
+#splash .tg::before,#splash .tg::after{content:"";width:22px;height:2px;background:#ffc93c;border-radius:2px}
+#splash .ct{font-size:.8rem;opacity:0;animation:spFade .5s 1.8s forwards}
+@keyframes spFade{to{opacity:.95}}
+@media (prefers-reduced-motion:reduce){#splash *,#splash,.av2::before{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important}}
 .item{box-shadow:0 8px 20px -16px rgba(60,20,0,.4);transition:transform .15s ease}.item:active{transform:scale(.98)}
 .hero{border-radius:0 0 26px 26px;padding-bottom:20px}
 .hero .logo{object-fit:cover;box-shadow:0 6px 16px rgba(0,0,0,.18)}
@@ -196,7 +231,28 @@ body.gated{overflow:hidden}
 <script src="i18n.js"></script>
 </head>
 <body>
-<div id="splash"><div class="lg"><i></i><img src="icons/customer-192.png" alt=""></div><b>Melano Fast Food</b><small>🍔 🍟 🍕</small></div>
+<div id="splash" class="notr" aria-label="Melano Fast Food">
+  <svg class="mk" viewBox="0 0 120 120" aria-hidden="true">
+    <defs><linearGradient id="spBun" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8a2a"/><stop offset="1" stop-color="#d92b20"/></linearGradient></defs>
+    <rect x="6" y="6" width="108" height="108" rx="32" fill="#fff" fill-opacity=".14"/>
+    <rect x="14" y="14" width="92" height="92" rx="27" fill="#fff"/>
+    <g class="st" fill="none" stroke="#ff9a3c" stroke-width="3.5" stroke-linecap="round"><path d="M46 30 q-5 -6 0 -12"/><path d="M60 28 q-5 -6 0 -12"/><path d="M74 30 q-5 -6 0 -12"/></g>
+    <rect class="ly l1" x="28" y="80" width="64" height="12" rx="6" fill="#f0a35a"/>
+    <rect class="ly l2" x="25" y="68" width="70" height="13" rx="6.5" fill="#5b2617"/>
+    <path class="ly l3" d="M24 66 q6 7 12 0 t12 0 t12 0 t12 0 t12 0 t12 0 v4 h-72z" fill="#3fbf5a"/>
+    <g class="ly l4">
+      <path d="M26 64 C26 44 42 36 60 36 C78 36 94 44 94 64 Z" fill="url(#spBun)"/>
+      <ellipse class="sd" style="animation-delay:1.1s" cx="48" cy="48" rx="2.6" ry="1.6" fill="#ffe3b8" transform="rotate(-20 48 48)"/>
+      <ellipse class="sd" style="animation-delay:1.18s" cx="62" cy="44" rx="2.6" ry="1.6" fill="#ffe3b8"/>
+      <ellipse class="sd" style="animation-delay:1.26s" cx="75" cy="50" rx="2.6" ry="1.6" fill="#ffe3b8" transform="rotate(20 75 50)"/>
+      <ellipse class="sd" style="animation-delay:1.34s" cx="56" cy="55" rx="2.6" ry="1.6" fill="#ffe3b8" transform="rotate(10 56 55)"/>
+      <ellipse class="sd" style="animation-delay:1.42s" cx="40" cy="57" rx="2.6" ry="1.6" fill="#ffe3b8" transform="rotate(-30 40 57)"/>
+    </g>
+  </svg>
+  <div class="wd"><i style="animation-delay:.95s">M</i><i style="animation-delay:1.02s">E</i><i style="animation-delay:1.09s">L</i><i style="animation-delay:1.16s">A</i><i style="animation-delay:1.23s">N</i><i style="animation-delay:1.3s">O</i></div>
+  <div class="tg">FAST FOOD</div>
+  <div class="ct">بەردەڕەش · Bardarash</div>
+</div>
 <div id="gate" hidden>
   <div class="g-in">
     <div class="lang"><button data-lang="ku">کوردی</button><button data-lang="ar">العربية</button><button data-lang="en">English</button></div>
@@ -473,29 +529,61 @@ function iraqPhone(v){
   if(d.startsWith("0")) d=d.slice(1);
   return /^7\d{9}$/.test(d) ? "+964"+d : null;
 }
+// ئایکۆنەکانی پرۆفایل
+const PI=(d)=>`<span class="pic2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg></span>`;
+const IC={
+  phone:'<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+  cake:'<path d="M3 21h18"/><path d="M5 21v-8h14v8"/><path d="M5 16c2 1.5 3.5 1.5 5 0s3-1.5 4.5 0 3.5 1.5 4.5 0"/><path d="M12 13V9"/>',
+  bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  globe:'<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 0 20a15 15 0 0 1 0-20"/>',
+  shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+  doc:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/>',
+  chat:'<path d="M21 11.5a8.4 8.4 0 0 1-12.6 7.3L3 21l2.2-5.4A8.5 8.5 0 1 1 21 11.5z"/>'
+};
+const CHEV=`<svg class="pchev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>`;
+let ordStats=null; // لە loadOrders پڕ دەکرێتەوە
 function pushRow(){
-  const st = !pushCan() ? (isIOS?`<small class="hint">بۆ ئاگادارکردنەوە لە iPhone: لە Safari دوگمەی Share › Add to Home Screen بکە و ئەپەکە لەوێوە بکەرەوە.</small>`:null)
-    : Notification.permission==="granted" ? `<b style="color:var(--ok)">✓ چالاکە</b>`
-    : Notification.permission==="denied" ? `<small class="hint">ڕێگەت پێ نەداوە. لە ڕێکخستنی مۆبایل › Notifications ڕێگەی پێ بدە.</small>`
-    : `<button class="btn" id="pushBtn">چالاککردن</button>`;
-  return st===null ? "" : `<div class="pcard"><div class="prow"><span>🔔 ئاگادارکردنەوەکان</span></div>${st}</div>`;
+  // hint دەچێتە ژێر ناونیشانەکە، side دەچێتە لای چەپ
+  let hint="", side="";
+  if(!pushCan()){ if(!isIOS) return ""; hint="بۆ ئاگادارکردنەوە لە iPhone: لە Safari دوگمەی Share › Add to Home Screen بکە و ئەپەکە لەوێوە بکەرەوە."; }
+  else if(Notification.permission==="granted") side=`<span class="pon">✓ چالاکە</span>`;
+  else if(Notification.permission==="denied") hint="ڕێگەت پێ نەداوە. لە ڕێکخستنی مۆبایل › Notifications ڕێگەی پێ بدە.";
+  else side=`<button class="btn go" id="pushBtn">چالاککردن</button>`;
+  return `<div class="prow">${PI(IC.bell)}<span class="plbl">ئاگادارکردنەوەکان${hint?`<span class="hint">${hint}</span>`:""}</span>${side}</div>`;
 }
 function paintAcct(){
   const el=$("acct"); if(!el) return;
   if(session){
     const nm=(profile&&profile.name)||session.name||"هەژمارەکەم";
-    el.innerHTML=`<div class="ph"><div class="av2">${safeImg(session.pic)?`<img src="${esc(session.pic)}" alt="" referrerpolicy="no-referrer">`:`<span>${esc([...nm][0]||"👤")}</span>`}</div><b>${esc(nm)}</b><small>${esc(session.email)}</small></div>
-      <div class="pcard">${profile?`<div class="prow"><span>📱 ژمارەی مۆبایل</span><b dir="ltr">${esc(localPhone(profile.phone))}</b></div>${profile.gender?`<div class="prow"><span>👤 ڕەگەز</span><b>${profile.gender==="f"?"کچ":"کوڕ"}</b></div>`:""}${profile.birth?`<div class="prow"><span>🎂 ڕێکەوتی لەدایکبوون</span><b dir="ltr">${esc(profile.birth)}</b></div>`:""}`:""}<button class="btn ghost" id="pfEdit">✏️ دەستکاری پرۆفایل</button></div>
-      ${pushRow()}
-      <div class="pcard"><div class="prow"><span>🌐 زمان</span></div><div class="lang"><button data-lang="ku">کوردی</button><button data-lang="ar">العربية</button><button data-lang="en">English</button></div></div>
-      <div class="pcard plinks"><a href="privacy.html">🔒 سیاسەتی تایبەتمەندی</a><a href="terms.html">📄 مەرجەکان</a><a href="#" id="delAcct" class="red">🗑️ سڕینەوەی هەژمار</a></div>
-      <button class="btn ghost pout" id="outBtn">دەرچوون</button>`;
+    const wa=String((typeof SHOP!=="undefined"&&SHOP&&SHOP.whatsapp)||"").replace(/\D/g,"");
+    const s=ordStats||{n:myOrders().length,spent:null,live:0};
+    const spent=s.spent==null?"…":s.spent>=1000?Math.round(s.spent/1000)+"K":String(s.spent);
+    el.innerHTML=`<header class="ph"><div class="ph-top"><div class="ph-mini notr"><svg viewBox="0 0 120 120" aria-hidden="true"><rect x="8" y="8" width="104" height="104" rx="30" fill="#fff"/><rect x="28" y="80" width="64" height="12" rx="6" fill="#f0a35a"/><rect x="25" y="68" width="70" height="13" rx="6.5" fill="#5b2617"/><path d="M24 66 q6 7 12 0 t12 0 t12 0 t12 0 t12 0 t12 0 v4 h-72z" fill="#3fbf5a"/><path d="M26 64 C26 44 42 36 60 36 C78 36 94 44 94 64 Z" fill="#e8452a"/></svg>MELANO</div>
+        <button class="ph-ed" id="pfEdit" aria-label="دەستکاری پرۆفایل"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button></div>
+        <div class="av2">${safeImg(session.pic)?`<img src="${esc(session.pic)}" alt="" referrerpolicy="no-referrer">`:`<span>${esc([...nm][0]||"👤")}</span>`}</div><b>${esc(nm)}</b><small>${esc(session.email)}</small></header>
+      <div class="pstats"><div class="pstat"><strong>${s.n}</strong><span>کۆی داواکاری</span></div><div class="pstat"><strong>${spent}</strong><span>کۆی خەرجی (د.ع)</span></div><div class="pstat"><strong>${s.live}</strong><span>لە ڕێگایە</span></div></div>
+      <section class="psec"><h3>زانیاری کەسی</h3><div class="pcard">
+        ${profile?`<div class="prow">${PI(IC.phone)}<span class="plbl">ژمارەی مۆبایل</span><em class="pval" dir="ltr">${esc(localPhone(profile.phone))}</em></div>${profile.gender?`<div class="prow">${PI(IC.user)}<span class="plbl">ڕەگەز</span><em class="pval">${profile.gender==="f"?"کچ":"کوڕ"}</em></div>`:""}${profile.birth?`<div class="prow">${PI(IC.cake)}<span class="plbl">ڕێکەوتی لەدایکبوون</span><em class="pval" dir="ltr">${esc(profile.birth)}</em></div>`:""}`:`<button class="prow" id="pfEdit2">${PI(IC.user)}<span class="plbl">پرۆفایلەکەت تەواو بکە</span>${CHEV}</button>`}
+      </div></section>
+      <section class="psec"><h3>ڕێکخستن</h3><div class="pcard">
+        ${pushRow()}
+        <div class="prow">${PI(IC.globe)}<span class="plbl">زمان</span><div class="lang"><button data-lang="ku">کوردی</button><button data-lang="ar">عربي</button><button data-lang="en">EN</button></div></div>
+      </div></section>
+      <section class="psec"><h3>یارمەتی</h3><div class="pcard">
+        <a class="prow" href="privacy.html">${PI(IC.shield)}<span class="plbl">سیاسەتی تایبەتمەندی</span>${CHEV}</a>
+        <a class="prow" href="terms.html">${PI(IC.doc)}<span class="plbl">مەرجەکان</span>${CHEV}</a>
+        ${wa?`<a class="prow" href="https://wa.me/${wa}" target="_blank" rel="noopener">${PI(IC.chat)}<span class="plbl">پەیوەندی بە واتسئەپ</span>${CHEV}</a>`:""}
+      </div></section>
+      <button class="btn ghost pout" id="outBtn">دەرچوون</button>
+      <button class="pdel" id="delAcct">سڕینەوەی هەژمار</button>
+      <p class="pver notr">Melano Fast Food</p>`;
+    if($("pfEdit2")) $("pfEdit2").onclick=openProfile;
     $("outBtn").onclick=()=>{ signOut(); loadOrders(); };
     $("pfEdit").onclick=openProfile;
     if($("pushBtn")) $("pushBtn").onclick=async()=>{ $("pushBtn").disabled=true; await pushOn(true); paintAcct(); };
     if(window.setLang) document.querySelectorAll("#acct [data-lang]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lang===(localStorage.getItem("mln_lang")||"ku")));
-    $("delAcct").onclick=async e=>{
-      e.preventDefault();
+    $("delAcct").onclick=async()=>{
       if(!confirm("هەژمارەکەت بە تەواوی دەسڕدرێتەوە و ناگەڕێتەوە. دڵنیایت؟")) return;
       let r; try{ r=await rpc("delete_my_account"); }catch(x){ r=null; }
       if(r&&r.ok){ signOut(); loadOrders(); alert("هەژمارەکەت سڕایەوە."); }
@@ -869,6 +957,9 @@ async function loadOrders(){
   if(rows.length<list.length) LS.set("mln_orders",JSON.stringify(rows.map(x=>x.o)));
   const active=rows.filter(x=>x.r&&(x.r.status==="pending"||x.r.status==="accepted"));
   $("ordBd").hidden=!active.length; $("ordBd").textContent=active.length;
+  // ژمارەکانی سەرەوەی پرۆفایل
+  ordStats={n:rows.length,live:active.length,spent:rows.reduce((t,x)=>t+(x.r&&x.r.status==="delivered"?Number(x.r.total)||0:0),0)};
+  if(!$("viewProfile").hidden) paintAcct();
   $("olist").innerHTML = rows.length ? rows.map(({o,r})=>{
     const d=new Date(o.at), day=`${d.getMonth()+1}/${d.getDate()}`, st=r&&r.status;
     return `<button class="ocard ${st==="pending"||st==="accepted"?"live":""}" data-num="${esc(o.num)}"><div class="otop"><span>${esc(o.num)}</span><span class="opill ${esc(st||"")}">${OST[st]||"…"}</span></div>
@@ -1053,7 +1144,7 @@ $("chatIn").onkeydown=e=>{ if(e.key==="Enter") sendChat(); };
   const s=$("splash"); if(!s) return;
   if(SS.get("mln_splash")){ s.remove(); return; }
   SS.set("mln_splash","1");
-  setTimeout(()=>{ s.classList.add("out"); setTimeout(()=>s.remove(),500); },1500);
+  setTimeout(()=>{ s.classList.add("out"); setTimeout(()=>s.remove(),600); },2600);
 })();
 
 // داواکاری چالاکی وەشانی پێشوو دەگوازرێتەوە بۆ لیستەکە
