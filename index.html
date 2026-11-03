@@ -132,6 +132,16 @@ body.gated{overflow:hidden}
 .trk{margin:12px 0}.trk-row{border-radius:14px;padding:14px;font-weight:800;text-align:center}
 .trk-row.pend{background:var(--soft);color:var(--brand)}.trk-row.acc{background:rgba(21,163,90,.14);color:var(--ok)}.trk-row.del{background:rgba(21,163,90,.2);color:var(--ok)}
 .trk-row.can{background:rgba(226,59,46,.12);color:var(--brand)}
+.pf{margin:8px 16px 0;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px 12px 10px}
+.pf div{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.9rem}.pf span{color:var(--muted)}
+.tact{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.tact .btn{margin:0;padding:12px 8px;font-size:.92rem;text-align:center;text-decoration:none}.tact .btn:only-child{grid-column:1/-1}
+.cbd{background:var(--brand);color:#fff;border-radius:99px;padding:0 7px;font-size:.75rem;margin-inline-start:4px}
+.chat{display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow:auto;padding:4px 2px 10px}
+.bub{max-width:80%;padding:8px 12px;border-radius:16px;font-size:.93rem;line-height:1.5;word-break:break-word}
+.bub small{display:block;font-size:.68rem;opacity:.7;margin-top:2px}
+.bub.me{align-self:flex-start;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border-bottom-right-radius:4px}
+.bub.them{align-self:flex-end;background:var(--soft);color:var(--ink);border-bottom-left-radius:4px}
+.cin{display:flex;gap:8px;margin-top:6px}.cin input{flex:1;font:inherit;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink)}.cin .btn{width:auto;padding:11px 16px;margin:0}
 #okOv .sheet{height:100vh;height:100dvh;max-height:none;border-radius:0}
 .steps{display:grid;grid-template-columns:repeat(4,1fr);margin:4px 0 12px}
 .st{text-align:center;font-size:.72rem;font-weight:700;color:var(--muted);position:relative;line-height:1.3}
@@ -223,6 +233,7 @@ body.gated{overflow:hidden}
 <div class="overlay" id="cartOv"><div class="sheet"><div class="sheet-h"><b>🛒 سەبەتەکەت</b><button class="x" id="cartX">✕</button></div><div id="cartBody"></div></div></div>
 <div class="overlay" id="authOv"><div class="sheet"><div class="sheet-h"><b id="authTitle"></b><button class="x" id="authX">✕</button></div><div id="authBody"></div></div></div>
 <div class="overlay" id="okOv"><div class="sheet"><div class="sheet-h"><b>داواکارییەکەت</b><button class="x" id="okX">✕</button></div><div id="okBody"></div></div></div>
+<div class="overlay" id="chatOv"><div class="sheet"><div class="sheet-h"><b>💬 چات لەگەڵ گەیەنەر</b><button class="x" id="chatX">✕</button></div><div class="chat" id="chatList"></div><div class="cin" id="chatForm"><input id="chatIn" maxlength="300" placeholder="نامەکەت بنووسە…"><button class="btn go" id="chatGo">ناردن</button></div><p class="hint" id="chatNote"></p></div></div>
 
 <script>
 // مینیو، نرخ و ڕێکخستنەکان لە پانێڵی خاوەنەوە دەگۆڕدرێن — پێویست ناکات ئەم فایلە دەستکاری بکەیت
@@ -293,7 +304,7 @@ async function checkProfile(){
   if(!session||profile) return;
   let r; try{ r=await rpc("get_profile"); }catch(e){ return; }
   if(!r||r.ok!==true||!session) return;
-  if(r.profile){ profile=r.profile; keepCust(); } else openProfile();
+  if(r.profile){ profile=r.profile; keepCust(); paintAcct(); } else openProfile();
 }
 const localPhone = p => String(p||"").replace(/^\+964/,"0");
 function keepCust(){
@@ -316,7 +327,7 @@ $("pfSave").onclick=async()=>{
   let r; try{ r=await rpc("save_profile",{p_name:name,p_phone:phone,p_gender:sex,p_birth:birth}); }catch(e){ r=null; }
   $("pfSave").disabled=false;
   if(!r||!r.ok){ say(r&&r.error==="fields"?"تکایە هەموو خانەکان پڕ بکەرەوە.":"نەکرا. ئینتەرنێت بپشکنە و دووبارە هەوڵ بدەرەوە."); return; }
-  profile={name,phone,gender:sex,birth}; keepCust(); $("profGate").hidden=true; autoGeo();
+  profile={name,phone,gender:sex,birth}; keepCust(); $("profGate").hidden=true; paintAcct(); autoGeo();
 };
 function askLogin(){ guest=false; paintGate(); }
 // ===== لۆکەیشن: هەر جارێک ئەپ بکرێتەوە خۆی دەیگرێت؛ بێ شوێن ناتوانرێت بەردەوام بێت =====
@@ -434,9 +445,10 @@ function iraqPhone(v){
 function paintAcct(){
   const el=$("acct"); if(!el) return;
   if(session){
-    el.innerHTML=`<div class="acct">${safeImg(session.pic)?`<img src="${esc(session.pic)}" alt="" referrerpolicy="no-referrer">`:`<span class="av">👤</span>`}<div class="an"><b>${esc(session.name||"هەژمارەکەم")}</b><small>${esc(session.email)}</small></div><button class="btn ghost" id="outBtn">دەرچوون</button></div><div class="lang" style="margin-top:10px"><button data-lang="ku">کوردی</button><button data-lang="ar">العربية</button><button data-lang="en">English</button></div><p class="hint"><a href="#" id="profBtn" style="color:var(--muted)">پرۆفایل</a> · <a href="#" id="delAcct" style="color:var(--muted)">سڕینەوەی هەژمار</a></p>`;
+    el.innerHTML=`<div class="acct">${safeImg(session.pic)?`<img src="${esc(session.pic)}" alt="" referrerpolicy="no-referrer">`:`<span class="av">👤</span>`}<div class="an"><b>${esc((profile&&profile.name)||session.name||"هەژمارەکەم")}</b><small>${esc(session.email)}</small></div><button class="btn ghost" id="outBtn">دەرچوون</button></div>${profile?`<div class="pf"><div><span>ژمارەی مۆبایل</span><b dir="ltr">${esc(localPhone(profile.phone))}</b></div><div><span>ڕەگەز</span><b>${profile.gender==="f"?"کچ":"کوڕ"}</b></div><div><span>ڕێکەوتی لەدایکبوون</span><b dir="ltr">${esc(profile.birth)}</b></div><button class="btn ghost" id="pfEdit">✏️ دەستکاری پرۆفایل</button></div>`:""}<div class="lang" style="margin-top:10px"><button data-lang="ku">کوردی</button><button data-lang="ar">العربية</button><button data-lang="en">English</button></div><p class="hint"><a href="#" id="profBtn" style="color:var(--muted)">پرۆفایل</a> · <a href="#" id="delAcct" style="color:var(--muted)">سڕینەوەی هەژمار</a></p>`;
     $("outBtn").onclick=()=>{ signOut(); loadOrders(); };
     $("profBtn").onclick=e=>{ e.preventDefault(); openProfile(); };
+    if($("pfEdit")) $("pfEdit").onclick=openProfile;
     if(window.setLang) document.querySelectorAll("#acct [data-lang]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lang===(localStorage.getItem("mln_lang")||"ku")));
     $("delAcct").onclick=async e=>{
       e.preventDefault();
@@ -784,7 +796,7 @@ function openOrder(o,show){
 const trackShell = wa => `<div class="steps" id="steps"></div><div class="near" id="near" hidden>🔥 گەیەنەر زۆر نزیکە، ئامادە بە!</div>
   <div class="mapw" id="mapw" hidden><div id="map" class="map" dir="ltr"></div><button class="rec" id="rec" type="button" aria-label="ناوەندکردن">🎯</button></div>
   <div class="prog" id="prog" hidden><div class="bar"><i id="barFill"></i></div><div class="pst"><div><b id="pCame">—</b><span>هاتووە</span></div><div><b id="pLeft">—</b><span>ماوە</span></div><div><b id="pEta">—</b><span>کاتی گەیشتن</span></div></div></div>
-  <div class="tinfo" id="tinfo"></div><div class="trk" id="trk"></div><div id="rcpt"></div>${wa}<button class="btn ghost" id="newOrder">داخستن</button>`;
+  <div class="tinfo" id="tinfo"></div><div class="trk" id="trk"></div><div id="tact"></div><div id="rcpt"></div>${wa}<button class="btn ghost" id="newOrder">داخستن</button>`;
 let leaflet=null, map=null, pick=null, dMark=null, cMark=null, sMark=null, accC=null, trailLine=null, routeLine=null;
 let lastR=null, lastD=null, trail=[], follow=true, route=null, routeAt=0, routeFrom=null, routeBusy=false, nearDone=false, rcptDone=false;
 function resetTrack(){ if(map){ try{ map.remove(); }catch(e){} } map=dMark=cMark=sMark=accC=trailLine=routeLine=lastR=lastD=route=routeFrom=null; trail=[]; follow=true; routeAt=0; nearDone=false; rcptDone=false; }
@@ -901,9 +913,45 @@ function startTrack(){
     else if(r.status==="accepted"){ el.innerHTML=`<div class="trk-row acc">🛵 گەیەنەرەکەت <b>${esc(r.driver||"")}</b> لە ڕێگایە بۆ لای تۆ!</div>`; if($("okOv").classList.contains("on")) showMap(r); }
     else if(r.status==="delivered"){ el.innerHTML=`<div class="trk-row del">✅ گەیەنرا! نۆشی گیان 🍔</div>`; endTrack(); }
     else if(r.status==="cancelled"){ el.innerHTML=`<div class="trk-row can">❌ ببورە، داواکارییەکەت هەڵوەشێنرایەوە.</div>`; $("steps").innerHTML=""; endTrack(); }
+    paintActions(r);
   };
   paint(); trackTimer=setInterval(paint, 2000);
 }
+// ===== پەیوەندی و چات لەگەڵ گەیەنەر: تەنها کاتێک داواکاری لە ڕێگایە =====
+let chatNum=null, chatTok=null, chatTimer=null;
+function paintActions(r){
+  const el=$("tact"); if(!el) return;
+  if(r.status!=="accepted"){ el.innerHTML=""; el.dataset.k=""; return; }
+  const unread=Math.max(0,(r.msgs||0)-(+LS.get("mln_seen_"+r.num)||0)), k=(r.dphone||"")+"|"+unread;
+  if(el.dataset.k===k) return; el.dataset.k=k;
+  const tel=/^\+9647\d{9}$/.test(r.dphone||"")?r.dphone:"";
+  el.innerHTML=`<div class="tact">${tel?`<a class="btn ghost" href="tel:${tel}">📞 پەیوەندی بە گەیەنەر</a>`:""}<button class="btn ghost" id="chatBtn">💬 چات${unread?`<span class="cbd">${unread}</span>`:""}</button></div>`;
+  $("chatBtn").onclick=()=>openChat(r.num,myTok);
+}
+function openChat(num,tok){ chatNum=num; chatTok=tok; $("chatOv").classList.add("on"); loadChat(); clearInterval(chatTimer); chatTimer=setInterval(loadChat,3000); }
+function closeChat(){ $("chatOv").classList.remove("on"); clearInterval(chatTimer); chatNum=null; }
+async function loadChat(){
+  if(!chatNum) return;
+  let r; try{ r=await rpc("order_chat",{p_num:chatNum,p_token:chatTok}); }catch(e){ return; }
+  if(!r||!r.ok||!chatNum) return;
+  const L=$("chatList"), atEnd=L.scrollHeight-L.scrollTop-L.clientHeight<40, msgs=r.msgs||[];
+  L.innerHTML=msgs.length?msgs.map(m=>`<div class="bub ${m.s==="c"?"me":"them"}">${esc(m.b)}<small>${esc(m.t)}</small></div>`).join(""):`<p class="hint">هێشتا نامە نییە.</p>`;
+  if(atEnd) L.scrollTop=L.scrollHeight;
+  LS.set("mln_seen_"+chatNum,String(msgs.filter(m=>m.s==="d").length));
+  $("chatForm").hidden=!r.open; $("chatNote").textContent=r.open?"":"داواکارییەکە تەواو بووە، نامە نانێردرێت.";
+}
+async function sendChat(){
+  const v=$("chatIn").value.trim(); if(!v||!chatNum) return;
+  $("chatGo").disabled=true;
+  let r; try{ r=await rpc("order_send",{p_num:chatNum,p_token:chatTok,p_body:v}); }catch(e){ r=null; }
+  $("chatGo").disabled=false;
+  if(r&&r.ok){ $("chatIn").value=""; loadChat(); } else alert("نەنێردرا. دووبارە هەوڵ بدەرەوە.");
+}
+$("chatX").onclick=closeChat;
+$("chatOv").onclick=e=>{ if(e.target.id==="chatOv") closeChat(); };
+$("chatGo").onclick=sendChat;
+$("chatIn").onkeydown=e=>{ if(e.key==="Enter") sendChat(); };
+
 // داواکاری چالاکی وەشانی پێشوو دەگوازرێتەوە بۆ لیستەکە
 (function migrate(){
   let o=null; try{ o=JSON.parse(LS.get("mln_order")||"null"); }catch(e){}

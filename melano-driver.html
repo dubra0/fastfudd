@@ -58,6 +58,14 @@ input{font:inherit;padding:12px 14px;border:1px solid var(--line);border-radius:
 .nav{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#15a35a,#0f7f46);color:#fff;border-radius:16px;padding:12px 14px;margin-bottom:10px}
 .nav .ar{font-size:2.3rem;line-height:1;flex:none}
 .nav b{display:block;font-size:1.12rem;font-weight:900;line-height:1.35}.nav small{font-size:.86rem;opacity:.92}
+.cbd{background:var(--brand);color:#1a0f02;border-radius:99px;padding:0 7px;font-size:.75rem;margin-inline-start:4px}
+.ov{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.6);display:none;align-items:flex-end}.ov.on{display:flex}
+.sheet{background:var(--bg);width:100%;max-width:620px;margin:0 auto;border-radius:20px 20px 0 0;padding:16px;max-height:88vh;display:flex;flex-direction:column}
+.sheet-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-weight:900}
+.chat{display:flex;flex-direction:column;gap:6px;overflow:auto;flex:1;min-height:30vh;padding:4px 2px 10px}
+.bub{max-width:80%;padding:8px 12px;border-radius:16px;font-size:.93rem;line-height:1.5;word-break:break-word}.bub small{display:block;font-size:.68rem;opacity:.7}
+.bub.me{align-self:flex-start;background:linear-gradient(135deg,#22c55e,#15a35a);color:#04210f}.bub.them{align-self:flex-end;background:var(--soft)}
+.cin{display:flex;gap:8px}.cin input{flex:1}
 </style>
 </head>
 <body>
@@ -83,6 +91,7 @@ input{font:inherit;padding:12px 14px;border:1px solid var(--line);border-radius:
   <div class="dinfo" id="dinfo"></div>
   <div id="list"><div class="empty">چاوەڕێ بکە…</div></div>
 </div>
+<div class="ov" id="chatOv"><div class="sheet"><div class="sheet-h"><span id="chatTitle">💬 چات لەگەڵ کڕیار</span><button class="btn ghost sm" id="chatX">✕</button></div><div class="chat" id="chatList"></div><div class="cin" id="chatForm"><input id="chatIn" maxlength="300" placeholder="نامەکەت بنووسە…"><button class="btn ok sm" id="chatGo">ناردن</button></div><p class="meta" id="chatNote"></p></div></div>
 
 <script>
 if(top!==self) top.location=self.location;
@@ -112,6 +121,32 @@ function enter(){ $("login").hidden=true; $("app").hidden=false; $("me").textCon
 $("go").onclick=login; $("dPin").onkeydown=e=>{if(e.key==="Enter")login();};
 $("out").onclick=()=>{ clearInterval(timer); try{sessionStorage.removeItem("mln_drv");}catch(e){} location.reload(); };
 
+// ===== چات لەگەڵ کڕیاری داواکارییەکی خۆت =====
+let chatNum=null, chatTimer=null;
+function openChat(num){ chatNum=num; $("chatTitle").textContent="💬 چات لەگەڵ کڕیار · "+num; $("chatOv").classList.add("on"); loadChat(); clearInterval(chatTimer); chatTimer=setInterval(loadChat,3000); }
+function closeChat(){ $("chatOv").classList.remove("on"); clearInterval(chatTimer); chatNum=null; loop(); }
+async function loadChat(){
+  if(!chatNum) return;
+  let r; try{ r=await rpc("driver_chat",{p_name:me.name,p_pin:me.pin,p_num:chatNum}); }catch(e){ return; }
+  if(!r||!r.ok||!chatNum) return;
+  const L=$("chatList"), atEnd=L.scrollHeight-L.scrollTop-L.clientHeight<40, msgs=r.msgs||[];
+  L.innerHTML=msgs.length?msgs.map(m=>`<div class="bub ${m.s==="d"?"me":"them"}">${esc(m.b)}<small>${esc(m.t)}</small></div>`).join(""):`<p class="meta">هێشتا نامە نییە.</p>`;
+  if(atEnd) L.scrollTop=L.scrollHeight;
+  try{ localStorage.setItem("mln_dseen_"+chatNum,String(msgs.filter(m=>m.s==="c").length)); }catch(e){}
+  $("chatForm").hidden=!r.open; $("chatNote").textContent=r.open?"":"داواکارییەکە تەواو بووە.";
+}
+async function sendChat(){
+  const v=$("chatIn").value.trim(); if(!v||!chatNum) return;
+  $("chatGo").disabled=true;
+  let r; try{ r=await rpc("driver_send",{p_name:me.name,p_pin:me.pin,p_num:chatNum,p_body:v}); }catch(e){ r=null; }
+  $("chatGo").disabled=false;
+  if(r&&r.ok){ $("chatIn").value=""; loadChat(); } else alert("نەنێردرا.");
+}
+$("chatX").onclick=closeChat;
+$("chatOv").onclick=e=>{ if(e.target.id==="chatOv") closeChat(); };
+$("chatGo").onclick=sendChat;
+$("chatIn").onkeydown=e=>{ if(e.key==="Enter") sendChat(); };
+
 async function loop(){
   let r; try{ r=await rpc("driver_orders",{p_name:me.name,p_pin:me.pin}); }catch(e){ return; }
   if(!r) return;
@@ -132,10 +167,12 @@ async function loop(){
       <div class="items">${items}</div>
       <div class="meta">👤 ${esc(o.cust_name)} · 📞 ${esc(o.cust_phone)}</div>
       <div class="meta">📍 ${esc(o.address)}</div>${(pos&&o.lat&&o.lng)?`<div class="dist">📏 ${fmtKm(km(pos.lat,pos.lng,o.lat,o.lng))} لێتەوە</div>`:""}${map}
+      ${mine?(()=>{ const un=Math.max(0,(o.msgs||0)-(+localStorage.getItem("mln_dseen_"+o.num)||0)); return `<div style="display:flex;gap:8px;margin-top:8px"><a class="btn ghost sm" style="flex:1;text-align:center;text-decoration:none" href="tel:${esc(String(o.cust_phone||"").replace(/[^0-9+]/g,""))}">📞 پەیوەندی</a><button class="btn ghost sm" style="flex:1" data-chat="${esc(o.num)}">💬 چات${un?`<span class="cbd">${un}</span>`:""}</button></div>`; })():""}
       <div class="foot"><b>${money(o.total)}</b>${mine?`<button class="btn ok sm" data-deliver="${esc(o.num)}">✅ گەیاندرا</button>`:`<button class="btn sm" data-take="${esc(o.num)}">🛵 من دەیبەم</button>`}</div>
     </div>`;
   }).join("") : `<div class="empty">ئێستا داواکاری نییە. چاوەڕێ بکە 🛵</div>`;
   $("list").querySelectorAll("[data-take]").forEach(b=>b.onclick=async()=>{ b.disabled=true; const r2=await rpc("accept_order",{p_name:me.name,p_pin:me.pin,p_num:b.dataset.take}); if(r2&&r2.ok){ follow=true; window.scrollTo({top:0,behavior:"smooth"}); loop(); } else{ alert(r2&&r2.error==="taken"?"ئەم داواکارییە وەرگیراوە.":"نەکرا."); loop(); } });
+  $("list").querySelectorAll("[data-chat]").forEach(b=>b.onclick=()=>openChat(b.dataset.chat));
   $("list").querySelectorAll("[data-deliver]").forEach(b=>b.onclick=async()=>{ b.disabled=true; await rpc("deliver_order",{p_name:me.name,p_pin:me.pin,p_num:b.dataset.deliver}); loop(); });
 }
 // نەخشەکەت هەمیشە شوێنی خۆت نیشان دەدات؛ شوێن تەنها کاتی گەیاندن بۆ کڕیار دەنێردرێت
