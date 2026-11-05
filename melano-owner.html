@@ -84,6 +84,11 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
 .orow{display:flex;gap:6px;align-items:center;margin-bottom:6px}.orow .pp{width:100px;flex:none;padding:9px;font-family:var(--fd)}.orow input{padding:9px}.orow button{flex:none}
 .note{color:var(--brand);font-size:.84rem;font-weight:700;display:block}
 .link{display:flex;gap:8px;align-items:center;margin-bottom:8px}.link input{direction:ltr;font-size:.82rem}
+.promo{display:flex;gap:12px;align-items:center;border-radius:18px;padding:14px 16px;color:#fff;margin-top:6px;overflow:hidden;box-shadow:0 10px 24px -14px rgba(120,20,0,.7);max-width:480px}
+.promo.fire{background:linear-gradient(135deg,#e23b2e,#ff7a1a)}.promo.green{background:linear-gradient(135deg,#0f8a4a,#3cc46a)}.promo.gold{background:linear-gradient(135deg,#f2a516,#ffd84d);color:#3a2200}.promo.dark{background:linear-gradient(135deg,#241612,#4a2f22)}
+.promo img{width:72px;height:72px;border-radius:14px;object-fit:cover;flex:none;background:rgba(255,255,255,.2)}
+.promo .pt{flex:1;min-width:0}.promo .pt b{display:block;font-size:1.05rem;font-weight:900;line-height:1.35}.promo .pt p{margin:3px 0 0;font-size:.86rem;opacity:.95;line-height:1.5}
+.promo .go{font-size:1.3rem;flex:none;opacity:.9}
 </style>
 </head>
 <body>
@@ -171,6 +176,21 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
       <button class="btn" id="saveShop" style="margin-top:14px;width:100%">پاشەکەوتکردن</button>
     </div>
     <div class="card">
+      <h2>🖼️ بانەری ڕیکلام</h2>
+      <div class="big-sw"><div><b id="bnTxt">بانەر داخراوە</b><div class="fl">لە سەرەوەی مینیوی کڕیار دەردەکەوێت، وەک «ئۆفەری ئەمڕۆ»</div></div><label class="sw"><input type="checkbox" id="bnOn"><i></i></label></div>
+      <div class="grid2">
+        <div class="fld"><span class="fl">ناونیشان (پێویستە) · زۆرترین 60 پیت</span><input id="bnTitle" maxlength="60" placeholder="🔥 ئۆفەری ئەمڕۆ"></div>
+        <div class="fld"><span class="fl">ڕەنگ</span><select id="bnColor"><option value="fire">🔥 سوور و پرتەقاڵی</option><option value="green">🟢 سەوز</option><option value="gold">🟡 زەرد</option><option value="dark">⚫ تاریک</option></select></div>
+        <div class="fld" style="grid-column:1/-1"><span class="fl">دەق · زۆرترین 160 پیت</span><input id="bnText" maxlength="160" placeholder="دوو بەرگر بکڕە، کۆکایەک بەخۆڕایی وەربگرە"></div>
+        <div class="fld"><span class="fl">کاتێک کڕیار کلیکی لێ دەکات، ئەم خواردنە بکرێتەوە (ئارەزوومەندانە)</span><select id="bnItem"><option value="">— هیچ —</option></select></div>
+        <div class="fld"><span class="fl">وێنە (ئارەزوومەندانە)</span><div class="row" style="margin:0"><label class="btn ghost sm"><span id="bnPickTxt">📷 هەڵبژاردنی وێنە</span><input type="file" id="bnFile" accept="image/*" hidden></label><button type="button" class="btn ghost sm red" id="bnImgDel" hidden>لابردنی وێنە</button></div></div>
+      </div>
+      <input type="hidden" id="bnImg">
+      <div class="fl" style="margin-top:12px">پێشبینین:</div>
+      <div id="bnPrev"></div>
+      <button class="btn" id="bnSave" style="margin-top:14px;width:100%">پاشەکەوتکردنی بانەر</button>
+    </div>
+    <div class="card">
       <h2>🎟️ کۆدی داشکاندن</h2>
       <div class="grid2">
         <div class="fld"><span class="fl">کۆد (پیتی ئینگلیزی و ژمارە)</span><input id="cCode" dir="ltr" maxlength="20" placeholder="MELANO10" style="text-transform:uppercase"></div>
@@ -253,7 +273,7 @@ const EMOJIS = ["🍔","🍕","🌯","🌭","🍟","🍗","🥙","🧆","🥗","
 async function rpc(fn, body){ const r=await fetch(SUPA+fn,{method:"POST",headers:{"Content-Type":"application/json",apikey:KEY,Authorization:"Bearer "+KEY},body:JSON.stringify(body||{})}); return r.json(); }
 function bell(){ try{ const A=window.AudioContext||window.webkitAudioContext; if(!A)return; const c=new A(); [988,1319,1760].forEach((f,i)=>{const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+i*0.14;o.type="sine";o.frequency.value=f;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.3,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.6);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+0.6);});}catch(e){} }
 function toast(m, bad){ const t=$("toast"); t.textContent=m; t.className="toast on"+(bad?" bad":""); clearTimeout(toast.h); toast.h=setTimeout(()=>t.className="toast"+(bad?" bad":""),2400); }
-const ERR = {name:"تکایە ناو بنووسە.",price:"نرخ هەڵەیە.",pin:"پاسوۆرد دەبێت لانیکەم ٨ پیت یان ژمارە بێت.",dpin:"PIN دەبێت لانیکەم ٦ پیت یان ژمارە بێت.",old:"پاسوۆردی ئێستا هەڵەیە.",locked:"هەوڵی هەڵە زۆر بوو. ٣٠ خولەکی تر هەوڵ بدەرەوە.",fee:"نرخی گەیاندن دەبێت تەنها ژمارە بێت.",disc:"داشکاندن دەبێت لە نێوان 0 و 90 بێت.",zones:"بۆ هەر ناوچەیەک ناو، نرخ و نیوەتیرە بنووسە.",range:"ماوەی ڕاپۆرت هەڵەیە. دەبێت لە ساڵێک کەمتر بێت.",cat:"بەشێک هەڵبژێرە.",exists:"گەیەنەرێک بەم ناوە هەیە."};
+const ERR = {name:"تکایە ناو بنووسە.",price:"نرخ هەڵەیە.",pin:"پاسوۆرد دەبێت لانیکەم ٨ پیت یان ژمارە بێت.",dpin:"PIN دەبێت لانیکەم ٦ پیت یان ژمارە بێت.",old:"پاسوۆردی ئێستا هەڵەیە.",locked:"هەوڵی هەڵە زۆر بوو. ٣٠ خولەکی تر هەوڵ بدەرەوە.",fee:"نرخی گەیاندن دەبێت تەنها ژمارە بێت.",disc:"داشکاندن دەبێت لە نێوان 0 و 90 بێت.",zones:"بۆ هەر ناوچەیەک ناو، نرخ و نیوەتیرە بنووسە.",range:"ماوەی ڕاپۆرت هەڵەیە. دەبێت لە ساڵێک کەمتر بێت.",cat:"بەشێک هەڵبژێرە.",exists:"گەیەنەرێک بەم ناوە هەیە.",banner:"زانیاریی بانەر هەڵەیە. ناونیشان پێویستە (زۆرترین 60 پیت) و دەق زۆرترین 160 پیت."};
 async function act(fn, body, okMsg){
   let r; try{ r=await rpc(fn, Object.assign({p_pin:pin}, body)); }catch(e){ r=null; }
   if(r&&r.ok){ if(okMsg)toast(okMsg); return r; }
@@ -619,7 +639,42 @@ function paintSettings(){
   const act2=document.activeElement;
   [["sName","shop_name"],["sTag","tagline"],["sTime","delivery_time"],["sFee","delivery_fee"],["sDisc","discount_all"],["sWa","whatsapp"]].forEach(([id,k])=>{ if($(id)!==act2) $(id).value=s[k]||""; });
   if(!zonesDirty){ try{ ZONES=JSON.parse(s.delivery_zones||"[]").filter(z=>Array.isArray(z.pts)); }catch(e){ ZONES=[]; } paintZones(); }
+  paintBanner();
 }
+// ===== بانەری ڕیکلام =====
+let bnDirty=false;
+function paintBanner(){
+  const s=SHOP||{}, sel=$("bnItem"), keep=bnDirty?sel.value:(s.banner_item||"");
+  sel.innerHTML=`<option value="">— هیچ —</option>`+MENU.map(c=>`<optgroup label="${esc(c.icon)} ${esc(c.name)}">`+c.items.map(it=>`<option value="${it.id}">${esc(it.n)}${it.a===false?" (نییە)":""}</option>`).join("")+`</optgroup>`).join("");
+  sel.value=keep; if(sel.value!==keep) sel.value="";
+  if(!bnDirty){
+    $("bnOn").checked=s.banner_on==="1"; $("bnTitle").value=s.banner_title||""; $("bnText").value=s.banner_text||"";
+    $("bnColor").value=["fire","green","gold","dark"].includes(s.banner_color)?s.banner_color:"fire"; $("bnImg").value=s.banner_img||"";
+  }
+  paintBnPrev();
+}
+function paintBnPrev(){
+  const on=$("bnOn").checked, t=$("bnTitle").value.trim(), x=$("bnText").value.trim(), img=safeImg($("bnImg").value);
+  $("bnTxt").textContent=on?"🟢 بانەر چالاکە":"بانەر داخراوە";
+  $("bnImgDel").hidden=!$("bnImg").value;
+  $("bnPrev").innerHTML=`<div class="promo ${esc($("bnColor").value)}" style="opacity:${on?1:.5}">${img?`<img src="${esc(img)}" alt="">`:""}<span class="pt"><b>${esc(t||"ناونیشان")}</b>${x?`<p>${esc(x)}</p>`:""}</span>${$("bnItem").value?`<span class="go">‹</span>`:""}</div>`;
+}
+["bnOn","bnTitle","bnText","bnColor","bnItem"].forEach(id=>{ $(id).addEventListener("input",()=>{ bnDirty=true; paintBnPrev(); }); $(id).addEventListener("change",()=>{ bnDirty=true; paintBnPrev(); }); });
+$("bnFile").onchange=async()=>{
+  const f=$("bnFile").files[0]; if(!f) return;
+  $("bnSave").disabled=true; $("bnPickTxt").textContent="⏳ بار دەکرێت…";
+  try{ $("bnImg").value=await uploadImg(f); bnDirty=true; paintBnPrev(); toast("وێنە بار کرا ✓ پاشەکەوت بکە"); }
+  catch(e){ toast(e.message==="image"?"ئەم وێنەیە ناخوێنرێتەوە، وێنەیەکی تر هەڵبژێرە.":"وێنە بار نەکرا، ئینتەرنێت بپشکنە و دووبارە هەوڵ بدەرەوە.",true); }
+  $("bnSave").disabled=false; $("bnPickTxt").textContent="📷 هەڵبژاردنی وێنە"; $("bnFile").value="";
+};
+$("bnImgDel").onclick=()=>{ $("bnImg").value=""; bnDirty=true; paintBnPrev(); };
+$("bnSave").onclick=async()=>{
+  const on=$("bnOn").checked, t=$("bnTitle").value.trim();
+  if(on&&!t){ toast("بۆ بانەر ناونیشانێک بنووسە.",true); $("bnTitle").focus(); return; }
+  $("bnSave").disabled=true;
+  const ok=await act("owner_set_settings",{p_data:{banner_on:on?"1":"0",banner_title:t,banner_text:$("bnText").value.trim(),banner_img:$("bnImg").value,banner_item:$("bnItem").value,banner_color:$("bnColor").value}}, on?"بانەر بڵاو کرایەوە ✓":"بانەر داخرا ✓");
+  $("bnSave").disabled=false; if(ok){ bnDirty=false; loadMenu(); }
+};
 // ===== ناوچەکانی گەیاندن: خاوەن لەسەر نەخشە دیاریان دەکات =====
 const BARDARASH=[36.5136,43.5977];
 let ZONES=[], zonesDirty=false, zoneMap=null, zoneLayer=null, leaflet=null, zDraft=null;
