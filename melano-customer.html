@@ -57,6 +57,7 @@ body.gated{overflow:hidden}
 .g-rnd{width:54px;height:54px;border-radius:50%;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center;cursor:pointer;color:var(--ink)}
 .g-foot{text-align:center;border-top:1px solid var(--line);margin-top:20px;padding-top:14px}
 .gbtn{font:inherit;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#1f1f1f;border:1px solid #dadce0;border-radius:12px;padding:11px;cursor:pointer}
+.gbtn.wa{background:#25d366;color:#fff;border-color:#25d366}
 .olist{padding:8px 16px;display:grid;gap:10px}
 .ocard{width:100%;text-align:start;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:13px;cursor:pointer;display:block}
 .ocard.live{border-color:var(--ok)}
@@ -383,7 +384,9 @@ const authErrText = x => x.status===429 ? "هەوڵی زۆر درا. تکایە 
 const AUTH_T = {login:"چوونەژوورەوە",signup:"هەژماری نوێ",forgot:"لەبیرچوونی پاسوۆرد",recovery:"پاسوۆردی نوێ"};
 function paintSocial(){
   const el=$("gSocial"); if(!el) return;
-  el.innerHTML=`<div class="g-or">یان</div><button class="gbtn" id="gGoogle" style="width:100%">${G_ICON}چوونەژوورەوە بە Google</button>`;
+  el.innerHTML=`<div class="g-or">یان</div><button class="gbtn" id="gGoogle" style="width:100%">${G_ICON}چوونەژوورەوە بە Google</button>`
+    +(phoneOn?`<button class="gbtn wa" id="gWa" style="width:100%;margin-top:10px">${WA_ICON}چوونەژوورەوە بە WhatsApp</button>`:"");
+  if($("gWa")) $("gWa").onclick=()=>openAuth("phone");
   // ئەگەر هێشتا لە Supabase چالاک نەکراوە، نامەیەک نیشان دەدات نەک لاپەڕەی هەڵە
   $("gGoogle").onclick=()=>{ if(googleOn) googleLogin(); else { const m=$("auMsg"); if(m){ m.textContent="چوونەژوورەوە بە Google بەم زووانە چالاک دەبێت."; m.style.color="var(--brand)"; } } };
 }
@@ -411,7 +414,9 @@ function keepCust(){
 }
 function openProfile(){
   const p=profile||{};
-  $("pfName").value=p.name||(session&&session.name)||""; $("pfPhone").value=localPhone(p.phone); $("pfBirth").value=p.birth||"";
+  // کەسێک بە WhatsApp چووبێتە ژوورەوە، ژمارەکەی خۆی لێرە دادەنرێت
+  const sp=session&&/^9647\d{9}$/.test(session.email)?"0"+session.email.slice(3):"";
+  $("pfName").value=p.name||(session&&session.name)||""; $("pfPhone").value=localPhone(p.phone)||sp; $("pfBirth").value=p.birth||"";
   $("pfBirth").max=new Date().toISOString().slice(0,10);
   document.querySelectorAll('[name="pfSex"]').forEach(x=>x.checked=x.value===p.gender);
   $("pfMsg").textContent=""; $("profGate").hidden=false;
@@ -457,8 +462,8 @@ function openAuth(mode){
   const inGate=!session, box=$(inGate?"gateBody":"authBody");
   const eye=`<button type="button" class="g-eye" id="auEye" aria-label="پیشاندانی پاسوۆرد">👁</button>`;
   if(inGate){
-    $("gTitle").textContent=mode==="signup"?"هەژماری نوێ":mode==="forgot"?"لەبیرچوونی پاسوۆرد":"چوونەژوورەوە";
-    $("gSocial").hidden=mode==="forgot"||mode==="otp";
+    $("gTitle").textContent=mode==="signup"?"هەژماری نوێ":mode==="forgot"?"لەبیرچوونی پاسوۆرد":mode==="phone"||mode==="otp"?"چوونەژوورەوە بە WhatsApp":"چوونەژوورەوە";
+    $("gSocial").hidden=mode==="forgot"||mode==="otp"||mode==="phone";
     $("gFoot").innerHTML=mode==="signup"?`هەژمارت هەیە؟ <button class="g-link" id="gSw">بچۆ ژوورەوە</button>`:`ئەندام نیت؟ <button class="g-link" id="gSw">هەژمار دروست بکە</button>`;
     $("gFoot").innerHTML+=`<div style="margin-top:10px"><button class="g-link" id="gGuest">سەرەتا مینیو ببینە</button></div>`;
     $("gSw").onclick=()=>openAuth(mode==="signup"?"login":"signup");
@@ -467,36 +472,42 @@ function openAuth(mode){
   const fld=(id,label,type,ac,ph)=>`<div class="field"><label for="${id}">${label}</label><input id="${id}" type="${type}" autocomplete="${ac}" dir="ltr" placeholder="${ph||""}"></div>`;
   const pass=(label,ac)=>`<div class="field"><label for="auPass">${label}</label><div class="g-pass"><input id="auPass" type="password" autocomplete="${ac}" dir="ltr">${eye}</div></div>`;
   let h="";
-  if(mode==="phone") h=phoneOn?`<div class="field"><label for="auPhone">ژمارەی مۆبایل</label><input id="auPhone" type="tel" inputmode="tel" autocomplete="tel" dir="ltr" placeholder="0750 123 4567"></div>`:`<p class="hint" style="margin:18px 0">چوونەژوورەوە بە مۆبایل بەم زووانە چالاک دەبێت.</p>`;
-  else if(mode==="otp") h=`<p class="hint">کۆدمان بۆ ${esc(otpPhone)} نارد</p><div class="field"><label for="auCode">کۆد</label><input id="auCode" inputmode="numeric" autocomplete="one-time-code" dir="ltr" maxlength="6"></div>`;
+  if(mode==="phone") h=phoneOn?`<div class="field"><label for="auPhone">ژمارەی مۆبایل</label><input id="auPhone" type="tel" inputmode="tel" autocomplete="tel" dir="ltr" placeholder="0750 123 4567" value="${esc(otpPhone?localPhone(otpPhone):"")}"></div><p class="hint">کۆدێکی ٦ ژمارەیی لە WhatsApp بۆت دێت. ئەگەر WhatsAppـت نییە، بە SMS دێت.</p>`:`<p class="hint" style="margin:18px 0">چوونەژوورەوە بە مۆبایل بەم زووانە چالاک دەبێت.</p>`;
+  else if(mode==="otp") h=`<p class="hint">کۆدمان بۆ <b dir="ltr">${esc(localPhone(otpPhone))}</b> نارد. سەیری WhatsApp بکە 💬</p><div class="field"><label for="auCode">کۆد</label><input id="auCode" inputmode="numeric" autocomplete="one-time-code" dir="ltr" maxlength="6" placeholder="••••••"></div>`;
   else h=(mode==="signup"?`<div class="field"><label for="auName">ناوت</label><input id="auName" autocomplete="name" maxlength="60"></div>`:"")
     +(mode!=="recovery"?fld("auMail","ئیمەیڵ","email","email","name@gmail.com"):"")
     +(mode==="forgot"?"":pass(mode==="login"?"پاسوۆرد":"پاسوۆرد (لانیکەم ٨ پیت)",mode==="login"?"current-password":"new-password"));
   if(mode==="login") h+=`<div class="g-row"><label><input type="checkbox" id="auKeep" ${remember?"checked":""}>لەبیرم بێت</label><button type="button" class="g-link" id="auForgot">پاسوۆردت لەبیر چووە؟</button></div>`;
   const canGo=!(mode==="phone"&&!phoneOn);
   h+=`<p class="hint" id="auMsg" style="margin-bottom:8px"></p>`+(canGo?`<button class="btn go" id="auGo">${{login:"چوونەژوورەوە",signup:"دروستکردنی هەژمار",forgot:"ناردنی لینک",recovery:"پاشەکەوتکردن",phone:"ناردنی کۆد",otp:"چوونەژوورەوە"}[mode]}</button>`:"");
-  if(mode==="forgot"||mode==="otp") h+=`<button class="btn ghost" id="auBack">گەڕانەوە</button>`;
+  if(mode==="otp") h+=`<button class="btn ghost" id="auResend" type="button">ناردنەوەی کۆد</button>`;
+  if(mode==="forgot"||mode==="otp"||mode==="phone") h+=`<button class="btn ghost" id="auBack">گەڕانەوە</button>`;
   box.innerHTML=h;
+  if(mode==="otp"){ otpCountdown(); $("auResend").onclick=()=>submitAuth("resend"); setTimeout(()=>{ const c=$("auCode"); if(c) c.focus(); },50); }
   if($("auEye")) $("auEye").onclick=()=>{ const p=$("auPass"); p.type=p.type==="password"?"text":"password"; };
   if($("auKeep")) $("auKeep").onchange=()=>{ remember=$("auKeep").checked; LS.set("mln_keep",remember?"1":"0"); };
   if($("auForgot")) $("auForgot").onclick=()=>{ if(MAIL_READY) openAuth("forgot"); else { const m=$("auMsg"); m.textContent="تکایە پەیوەندی بە چێشتخانە بکە بۆ گۆڕینی پاسوۆرد."; m.style.color="var(--brand)"; } };
-  if($("auBack")) $("auBack").onclick=()=>openAuth(mode==="otp"?"phone":"login");
+  if($("auBack")) $("auBack").onclick=()=>{ clearInterval(otpTimer); openAuth(mode==="otp"?"phone":"login"); };
   if(canGo) $("auGo").onclick=()=>submitAuth(mode);
   box.querySelectorAll("input").forEach(i=>i.onkeydown=e=>{ if(e.key==="Enter"&&$("auGo")) $("auGo").click(); });
   if(!inGate) $("authOv").classList.add("on");
 }
 async function submitAuth(mode){
   const msg=$("auMsg"), go=$("auGo"), say=(t,ok)=>{ msg.textContent=t; msg.style.color=ok?"var(--ok)":"var(--brand)"; };
-  if(mode==="phone"||mode==="otp"){
+  if(mode==="phone"||mode==="otp"||mode==="resend"){
     if(mode==="phone"){ otpPhone=iraqPhone($("auPhone").value)||""; if(!otpPhone){ say("ژمارەی مۆبایل دروست نییە."); return; } }
-    const code=mode==="otp"?$("auCode").value.trim():"";
-    if(mode==="otp"&&!/^\d{6}$/.test(code)){ say("کۆدی 6 ژمارەیی بنووسە."); return; }
-    go.disabled=true;
-    let x; try{ x=mode==="phone"?await authCall("otp","POST",{phone:otpPhone}):await authCall("verify","POST",{type:"sms",phone:otpPhone,token:code}); }catch(e){ x={ok:false,status:0,j:{}}; }
-    go.disabled=false;
-    if(!x.ok){ say(x.status===429?"زۆر هەوڵ درا. تکایە چەند خولەکێکی تر هەوڵ بدەرەوە.":mode==="otp"?"کۆد هەڵەیە یان بەسەرچووە.":"نەنێردرا. دووبارە هەوڵ بدەرەوە."); return; }
-    if(mode==="phone"){ openAuth("otp"); return; }
-    setSession(x.j.access_token,x.j.refresh_token); paintGate(); paintAcct(); loadOrders(); return;
+    const send=mode!=="otp", code=send?"":$("auCode").value.replace(/\D/g,"");
+    if(!send&&!/^\d{6}$/.test(code)){ say("کۆدی 6 ژمارەیی بنووسە."); return; }
+    // هەر کۆدێک پارەی تێدەچێت: لە ماوەی ٦٠ چرکەدا دووبارە نانێردرێت
+    if(send&&Date.now()<otpWait&&mode==="resend") return;
+    const btn=mode==="resend"?$("auResend"):go; if(btn) btn.disabled=true;
+    let x; try{ x=send?await authCall("otp","POST",{phone:otpPhone,channel:"sms"}):await authCall("verify","POST",{type:"sms",phone:otpPhone,token:code}); }catch(e){ x={ok:false,status:0,j:{}}; }
+    if(btn) btn.disabled=false;
+    if(!x.ok){ say(x.status===429?"زۆر هەوڵ درا. تکایە چەند خولەکێکی تر هەوڵ بدەرەوە.":send?"کۆد نەنێردرا. ژمارەکە بپشکنە و دووبارە هەوڵ بدەرەوە.":"کۆد هەڵەیە یان بەسەرچووە."); if(mode==="resend") otpCountdown(); return; }
+    if(send){ otpWait=Date.now()+60000; if(mode==="phone") openAuth("otp"); else { otpCountdown(); say("کۆدێکی نوێمان نارد ✓",true); } return; }
+    // بۆ ئەوەی کڕیار هەموو جارێک کۆد نەوێت (هەر کۆدێک پارەیە)، لەسەر ئەم مۆبایلە دەمێنێتەوە
+    clearInterval(otpTimer); remember=true; LS.set("mln_keep","1");
+    setSession(x.j.access_token,x.j.refresh_token); $("authOv").classList.remove("on"); paintGate(); paintAcct(); loadOrders(); return;
   }
   const email=$("auMail")?$("auMail").value.trim():"", pass=$("auPass")?$("auPass").value:"";
   if(mode!=="recovery"&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ say(AUTH_ERR.email_address_invalid); return; }
@@ -531,6 +542,13 @@ async function authToken(){
 }
 function oauthLogin(p){ location.href=`${BASE}/auth/v1/authorize?provider=${p}&redirect_to=${encodeURIComponent(location.href.split("#")[0].split("?")[0])}`; }
 const googleLogin = () => oauthLogin("google");
+const WA_ICON = `<svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><path fill="#fff" d="M16 3C9 3 3.3 8.6 3.3 15.6c0 2.5.7 4.8 2 6.8L3.6 29l6.8-1.8c1.9 1 4 1.6 5.6 1.6 7 0 12.7-5.7 12.7-12.6C28.7 8.6 23 3 16 3zm0 23.3c-1.9 0-3.8-.5-5.4-1.5l-.4-.2-4 1.1 1.1-3.9-.3-.4c-1.1-1.7-1.7-3.7-1.7-5.7C5.3 9.8 10.1 5.2 16 5.2s10.6 4.6 10.6 10.4S21.9 26.3 16 26.3zm5.8-7.8c-.3-.2-1.9-.9-2.2-1s-.5-.2-.7.2-.8 1-1 1.2-.4.2-.7 0c-.3-.2-1.4-.5-2.6-1.6-1-.9-1.6-1.9-1.8-2.2s0-.5.1-.7l.5-.6c.2-.2.2-.4.3-.6.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.8s1.2 3.2 1.4 3.5c.2.2 2.4 3.6 5.7 5 2.8 1.1 3.4.9 4 .8.6-.1 1.9-.8 2.2-1.5.3-.7.3-1.4.2-1.5-.1-.2-.3-.3-.6-.4z"/></svg>`;
+let otpWait=0, otpTimer=null;
+function otpCountdown(){
+  clearInterval(otpTimer);
+  const tick=()=>{ const b=$("auResend"); if(!b){ clearInterval(otpTimer); return; } const s=Math.max(0,Math.ceil((otpWait-Date.now())/1000)); b.disabled=s>0; b.textContent=s>0?`ناردنەوەی کۆد (${s})`:"ناردنەوەی کۆد"; if(!s) clearInterval(otpTimer); };
+  tick(); otpTimer=setInterval(tick,1000);
+}
 const G_ICON = `<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.2C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.9 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.9c-.6 3-2.2 5.5-4.7 7.2l7.6 5.9c4.4-4.1 7.1-10.1 7.1-17.6z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.2C1 16.5 0 20.1 0 24s1 7.5 2.6 10.8l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.2 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.2C6.5 42.6 14.6 48 24 48z"/></svg>`;
 const A_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.05 12.04c-.03-2.6 2.13-3.85 2.23-3.91-1.22-1.78-3.11-2.02-3.78-2.05-1.6-.16-3.13.95-3.95.95-.81 0-2.07-.93-3.4-.9-1.75.03-3.37 1.02-4.27 2.58-1.82 3.16-.47 7.84 1.31 10.4.87 1.25 1.9 2.66 3.26 2.61 1.31-.05 1.8-.85 3.38-.85 1.57 0 2.02.85 3.4.82 1.41-.02 2.3-1.27 3.16-2.53.99-1.45 1.4-2.85 1.43-2.93-.03-.01-2.74-1.05-2.77-4.19zM14.46 4.4c.72-.87 1.2-2.08 1.07-3.29-1.04.04-2.3.69-3.04 1.56-.67.77-1.25 2-1.09 3.18 1.16.09 2.34-.59 3.06-1.45z"/></svg>`;
 // ژمارەی عێراقی بۆ شێوەی نێودەوڵەتی: 0750... => +964750...
