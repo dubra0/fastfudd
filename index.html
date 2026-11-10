@@ -185,7 +185,7 @@ body.gated{overflow:hidden}
 .av2 img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 button.av2{border:0;padding:0;font:inherit;font-size:2.4rem;font-weight:900;cursor:pointer}
 .av-cam{position:absolute;right:-2px;bottom:-2px;z-index:2;width:32px;height:32px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:16px;font-style:normal;box-shadow:0 4px 12px rgba(0,0,0,.25);border:2px solid var(--brand)}
-#pfPhone[readonly]{background:var(--soft);color:var(--muted)}.lockh{display:block;text-align:start;margin-top:2px}
+#pfPhone[readonly],#oPhone[readonly]{background:var(--soft);color:var(--muted);cursor:not-allowed}.lockh{display:block;text-align:start;margin-top:2px}
 @keyframes avSpin{to{transform:rotate(360deg)}}
 .ph b{position:relative;z-index:1;display:block;font-size:1.25rem;font-weight:900;margin:14px 0 2px}
 .ph small{position:relative;z-index:1;display:block;font-size:.84rem;opacity:.9;direction:ltr}
@@ -461,6 +461,8 @@ function keepCust(){
 }
 // ئەگەر بە ژمارەی مۆبایل (WhatsApp) چووبێتە ژوورەوە، ژمارەکەی وەک 07xxxxxxxxx
 const waPhone = () => session&&/^9647\d{9}$/.test(session.email||"") ? "0"+session.email.slice(3) : "";
+// ژمارەی هەژمار: پشتڕاستکراوەی WhatsApp، ئەگەر نا ژمارەی پرۆفایل
+const acctPhone = () => waPhone() || (profile&&profile.phone?localPhone(profile.phone):"");
 function openProfile(){
   const p=profile||{};
   // کەسێک بە WhatsApp چووبێتە ژوورەوە، ژمارەکەی خۆی لێرە دادەنرێت
@@ -1017,7 +1019,7 @@ function renderCart(){
        <div class="total"><span>کۆی گشتی</span><span id="sumTotal">${money(cartTotal())}</span></div>
        <div class="field"><label>📝 تێبینی بۆ چێشتخانە (ئارەزوومەندانە)</label><textarea id="oNote" maxlength="300" placeholder="هەر داواکارییەکی تایبەتت هەیە لێرە بنووسە...">${esc(saved.note||"")}</textarea></div>
        <div class="field"><label>ناوت</label><input id="oName" autocomplete="name" placeholder="ناوی تەواو" value="${esc(saved.name)}"></div>
-       <div class="field"><label>ژمارەی مۆبایل</label><input id="oPhone" inputmode="tel" autocomplete="tel" placeholder="0750 123 4567" value="${esc(saved.phone)}"></div>
+       <div class="field"><label>ژمارەی مۆبایل</label><input id="oPhone" inputmode="tel" autocomplete="tel" placeholder="0750 123 4567" dir="ltr" value="${esc(acctPhone()||saved.phone)}" ${acctPhone()?"readonly":""}>${acctPhone()?`<small class="hint lockh">🔒 ژمارەی هەژمارەکەتە و ناگۆڕدرێت.</small>`:""}</div>
        <div class="field"><label>ناونیشانی گەیاندن</label><textarea id="oAddr" placeholder="گەڕەک، کۆڵان، نیشانەی ماڵ...">${esc(saved.addr)}</textarea></div>
        <div class="field" style="margin-bottom:6px"><label>شوێنی ماڵەکەت (پێویستە)</label></div>
        <button class="btn ghost" id="locBtn" type="button" style="margin-top:0">📍 شوێنی ئێستام بنێرە</button>
@@ -1046,8 +1048,10 @@ async function applyCoupon(){
 }
 
 async function placeOrder(){
-  const name=$("oName").value.trim(), phone=$("oPhone").value.trim(), addr=$("oAddr").value.trim();
   if(!session){ askLogin(); return; }
+  // ژمارە هەمیشە ژمارەی هەژمارەکەیە (WhatsApp یان پرۆفایل)، نەک ئەوەی لە سەبەتە بنووسرێت
+  if(!acctPhone()){ openProfile(); return; }
+  const name=$("oName").value.trim(), phone=acctPhone(), addr=$("oAddr").value.trim();
   if(!name||!phone||!addr){ alert("تکایە ناو، ژمارە و ناونیشان بنووسە."); return; }
   if(phone.replace(/\D/g,"").length<7){ alert("ژمارەی مۆبایل دروست نییە."); return; }
   // بێ شوێن گەیەنەر ناگاتە لای کڕیار
@@ -1062,8 +1066,9 @@ async function placeOrder(){
   if(res&&res.error==="coupon"){ coupon=null; renderCart(); update(); cpSay(CP_ERR[res.why]||CP_ERR.invalid); return; }
   if(!res||!res.ok){
     const err = res && res.error;
-    alert({closed:"ببورە، ئێستا داخراوین.",unavailable:"هەندێک لە خواردنەکان ئێستا نەماون. مینیو نوێ کرایەوە، تکایە سەبەتەکەت بپشکنە.",fields:"تکایە ناو، ژمارە و ناونیشان بنووسە.",busy:"داواکاری زۆرت ناردووە. تکایە چەند خولەکێکی تر هەوڵ بدەرەوە.",login:"تکایە سەرەتا بچۆ ژوورەوە.",far:"ببورە، ئەم شوێنە لە ناوچەکانی گەیاندن نییە.",location:"تکایە شوێنی ماڵەکەت دیاری بکە."}[err] || "نەنێردرا. ئینتەرنێت بپشکنە و دووبارە هەوڵ بدەرەوە.");
+    alert({closed:"ببورە، ئێستا داخراوین.",unavailable:"هەندێک لە خواردنەکان ئێستا نەماون. مینیو نوێ کرایەوە، تکایە سەبەتەکەت بپشکنە.",fields:"تکایە ناو، ژمارە و ناونیشان بنووسە.",busy:"داواکاری زۆرت ناردووە. تکایە چەند خولەکێکی تر هەوڵ بدەرەوە.",login:"تکایە سەرەتا بچۆ ژوورەوە.",far:"ببورە، ئەم شوێنە لە ناوچەکانی گەیاندن نییە.",location:"تکایە شوێنی ماڵەکەت دیاری بکە.",profile:"تکایە سەرەتا پرۆفایلەکەت تەواو بکە."}[err] || "نەنێردرا. ئینتەرنێت بپشکنە و دووبارە هەوڵ بدەرەوە.");
     if(err==="login") signOut();
+    if(err==="profile") openProfile();
     if(err==="closed"||err==="unavailable") await loadMenu(true);
     if($("placeBtn")) renderCart();
     return;

@@ -226,6 +226,8 @@
     ["بۆ داواکردنی خواردن، بە یەکێک لەم ڕێگایانە بچۆ ژوورەوە","Sign in with one of these options to order food","سجّل الدخول بإحدى هذه الطرق لطلب الطعام"],
     ["چوونەژوورەوە بە ئیمەیڵ","Continue with email","المتابعة بالبريد الإلكتروني"],
     ["🔒 ئەم ژمارەیە بە WhatsApp پشتڕاست کراوەتەوە و ناگۆڕدرێت.","🔒 This number was verified with WhatsApp and can't be changed.","🔒 تم التحقق من هذا الرقم عبر واتساب ولا يمكن تغييره."],
+    ["🔒 ژمارەی هەژمارەکەتە و ناگۆڕدرێت.","🔒 This is your account number and can't be changed.","🔒 هذا رقم حسابك ولا يمكن تغييره."],
+    ["تکایە سەرەتا پرۆفایلەکەت تەواو بکە.","Please complete your profile first.","يرجى إكمال ملفك الشخصي أولًا."],
     ["گۆڕینی وێنەی پرۆفایل","Change profile photo","تغيير صورة الملف الشخصي"],
     ["وێنە بار نەکرا. ئینتەرنێت بپشکنە و دووبارە هەوڵ بدەرەوە.","Photo upload failed. Check your internet and try again.","فشل رفع الصورة. تحقق من الإنترنت وحاول مرة أخرى."],
     ["ئەم وێنەیە ناخوێنرێتەوە، وێنەیەکی تر هەڵبژێرە.","This image can't be read. Choose another one.","لا يمكن قراءة هذه الصورة، اختر صورة أخرى."],
