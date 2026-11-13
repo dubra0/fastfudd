@@ -468,9 +468,10 @@ async function loadRoles(){
   roles={owner:!!r.owner,driver:r.driver||null};
   if(!roles.owner&&!roles.driver) return;
   paintAcct();
-  const m=LS.get("mln_mode");
-  if((m==="owner"&&roles.owner)||(m==="driver"&&roles.driver)) openPanel(m);   // جاری پێشوو ئەم پانێڵەی هەڵبژارد
-  else if(!m) showRoleGate();                                                  // یەکەم جار: بپرسە
+  // ژمارەی خاوەن یان گەیەنەر ڕاستەوخۆ پانێڵەکەی خۆی دەکاتەوە، بێ پرسیار.
+  // تەنها ئەگەر خۆی لە پانێڵەکەوە «🛍️ کڕیار»ی هەڵبژاردبێت، لە ئەپی کڕیار دەمێنێتەوە.
+  if(LS.get("mln_mode")==="c") return;
+  openPanel(roles.owner?"owner":"driver");
 }
 function showRoleGate(){
   const g=$("roleGate"); if(!g||!roles) return;
