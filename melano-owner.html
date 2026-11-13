@@ -89,9 +89,18 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
 .promo img{width:72px;height:72px;border-radius:14px;object-fit:cover;flex:none;background:rgba(255,255,255,.2)}
 .promo .pt{flex:1;min-width:0}.promo .pt b{display:block;font-size:1.05rem;font-weight:900;line-height:1.35}.promo .pt p{margin:3px 0 0;font-size:.86rem;opacity:.95;line-height:1.5}
 .promo .go{font-size:1.3rem;flex:none;opacity:.9}
+/* پانێڵەکە هەرگیز چاپ ناکرێت (تەنانەت لە مێنیوی وێبگەڕیشەوە). تەنها پسوولەی ناو #prArea چاپ دەکرێت */
+#prArea{display:none}
+@media print{
+  html,body{margin:0!important;padding:0!important;background:#fff!important;min-height:0!important;height:auto!important}
+  body>*:not(#prArea){display:none!important}
+  #prArea{display:block!important}
+  #prArea img{display:block;margin:0 auto}
+}
 </style>
 </head>
 <body>
+<div id="prArea"></div>
 <section id="login" class="login">
   <div class="ic">👑</div>
   <h1>پانێڵی خاوەن</h1>
@@ -123,7 +132,8 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
 
   <section id="t-orders">
     <div class="big-sw"><div><b>🖨️ چاپی خۆکار</b><div class="fl" id="apTxt">کاتێک داواکاری نوێ دێت، خۆی چاپ دەکرێت. ئەم پەڕەیە دەبێت کراوە بێت.</div></div><label class="sw"><input type="checkbox" id="apOn"><i></i></label></div>
-    <div class="row" style="align-items:end;margin-bottom:14px"><div class="f"><label for="paper">پانی کاغەزی چاپکەر</label><select id="paper"><option value="80">80mm (گەورە)</option><option value="58">58mm (بچووک)</option></select></div><button class="btn ghost" id="testPrint">🖨️ چاپی تاقیکردنەوە</button></div>
+    <div class="row" style="align-items:end;margin-bottom:14px"><div class="f"><label for="paper">پانی کاغەزی چاپکەر</label><select id="paper"><option value="80">80mm (گەورە)</option><option value="75">75mm (مامناوەند)</option><option value="58">58mm (بچووک)</option></select></div><div class="f"><label for="printVia">ڕێگای چاپ</label><select id="printVia"><option value="system">سیستەم (پەنجەرەی چاپ)</option><option value="rawbt">RawBT (یەک کرتە، بۆ ئامێری POS)</option></select></div><button class="btn ghost" id="testPrint">🖨️ چاپی تاقیکردنەوە</button><span class="fl">وەشانی چاپ: 6</span></div>
+    <button class="btn ok" id="printBar" hidden style="position:fixed;bottom:16px;left:16px;right:16px;z-index:50;font-size:1.15rem;padding:18px;box-shadow:0 8px 30px #0008"></button>
     <div class="stats" id="stats"></div>
     <div class="card">
       <h2>🛵 گەیەنەرەکان: کێ چەند داواکاری بردووە</h2>
@@ -152,9 +162,10 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
       <h2>🛵 گەیەنەرەکان</h2>
       <div id="drivers"></div>
       <h2 style="margin-top:16px;font-size:1rem">زیادکردنی گەیەنەری نوێ</h2>
+      <p style="color:var(--muted);font-size:.85rem;margin:0 0 8px">گەیەنەر بە هەمان ژمارە بە WhatsApp دەچێتە ناو ئەپی Melano و ڕاستەوخۆ پانێڵی گەیەنەر دەبینێت. پێویستی بە PIN نییە.</p>
       <div class="row">
         <div class="f"><label>ناو</label><input id="ndName" placeholder="ناوی گەیەنەر"></div>
-        <div class="f"><label>PIN</label><input id="ndPin" inputmode="numeric" placeholder="لانیکەم ٦ پیت یان ژمارە"></div>
+        <div class="f"><label>ژمارەی WhatsApp</label><input id="ndPin" inputmode="tel" dir="ltr" placeholder="0750 123 4567"></div>
         <button class="btn sm" id="addDrv">زیادکردن</button>
       </div>
     </div>
@@ -345,7 +356,9 @@ function showTab(t){
 
 // ===== چاپ: پسوولە بۆ چاپکەری کاشێر (80mm یان 58mm)؛ داواکاری چاپکراو لەسەر ئەم ئامێرە لەبیر دەمێنێت =====
 let lastOrders=[], autoPrint=false, printQ=[], printing=false, paper=80;
-try{ autoPrint=localStorage.getItem("mln_autoprint")==="1"; paper=localStorage.getItem("mln_paper")==="58"?58:80; }catch(e){}
+try{ autoPrint=localStorage.getItem("mln_autoprint")==="1"; const pp=+localStorage.getItem("mln_paper"); paper=[58,75,80].includes(pp)?pp:80; }catch(e){}
+// پانی کاغەز ← پانی شوێنی چاپ (خاڵ بە 203dpi، و ملیمەتر)
+const PAPER={58:{dots:384,mm:48,fs:26},75:{dots:512,mm:64,fs:28},80:{dots:576,mm:72,fs:30}};
 function printedSet(){ try{ return new Set(JSON.parse(localStorage.getItem("mln_printed")||"[]")); }catch(e){ return new Set(); } }
 function savePrinted(s){ try{ localStorage.setItem("mln_printed",JSON.stringify([...s].slice(-300))); }catch(e){} }
 function receiptHtml(o){
@@ -364,22 +377,107 @@ function receiptHtml(o){
     <div><b>${esc(o.cust_name)}</b></div><div dir="ltr" style="text-align:right">${esc(o.cust_phone)}</div><div>${esc(o.address)}</div>
     ${o.lat&&o.lng?`<div>شوێنی GPS هەیە</div>`:""}<hr><div class="c">سوپاس بۆ داواکارییەکەت</div></body></html>`;
 }
-function printOrder(o){ printQ.push(o); nextPrint(); }
+// ===== RawBT: پسوولە وەک وێنە (ESC/POS) دەنێردرێت، بۆیە پیتی کوردی ڕاست دەردەچێت =====
+const isAndroid=/Android/i.test(navigator.userAgent);
+let printVia="system", rawQ=[];
+try{ printVia=localStorage.getItem("mln_printvia")==="rawbt"?"rawbt":"system"; }catch(e){}
+// s = وردی وێنە. بۆ پەنجەرەی چاپی ئەندرۆید 3 ئەوەندە گەورە دەکرێت و تەنها ڕەش و سپی دەبێت، بۆ ئەوەی نووسین تیژ و ئەستوور دەربچێت
+function receiptCanvas(o,s=1){
+  const W=PAPER[paper].dots, P=4, fs=PAPER[paper].fs;
+  const c=document.createElement("canvas"); c.width=W*s; c.height=(s>1?3000:6000)*s;
+  const x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height); x.scale(s,s);
+  x.fillStyle=x.strokeStyle="#000"; x.textBaseline="top"; x.lineJoin="round";
+  const font=z=>`bold ${z}px Tahoma,"Noto Sans Arabic UI","Noto Sans Arabic","Noto Naskh Arabic UI","Noto Naskh Arabic",Arial,sans-serif`;
+  // نووسین هەم پڕ دەکرێت هەم هێڵی دەوری دەکێشرێت، بۆ ئەوەی لە چاپکەری گەرمی ئەستوورتر دەربچێت
+  const put=(t,px,py)=>{ x.lineWidth=1.1; x.strokeText(t,px,py); x.fillText(t,px,py); };
+  let y=4;
+  const wrap=(t,w)=>{ const out=[]; String(t==null?"":t).split("\n").forEach(par=>{ let line=""; par.split(/\s+/).filter(Boolean).forEach(wd=>{ const tt=line?line+" "+wd:wd; if(line&&x.measureText(tt).width>w){ out.push(line); line=wd; } else line=tt; }); out.push(line); }); return out; };
+  const text=(t,size=fs,align="right",dir="rtl",inset=0)=>{ x.font=font(size); x.direction=dir; x.textAlign=align; const lh=Math.round(size*1.42);
+    wrap(t,W-2*P-2*inset).forEach(l=>{ put(l,align==="center"?W/2:align==="left"?P+inset:W-P-inset,y); y+=lh; }); };
+  const row=(l,r,size=fs)=>{ x.font=font(size); const rw=x.measureText(r).width, lh=Math.round(size*1.42);
+    x.direction="ltr"; x.textAlign="left"; put(r,P,y);
+    x.direction="rtl"; x.textAlign="right"; wrap(l,W-2*P-rw-14).forEach(t=>{ put(t,W-P,y); y+=lh; }); };
+  const hr=(thick)=>{ y+=4; if(thick){ x.fillRect(P,y,W-2*P,4); } else for(let i=P;i<W-P;i+=12) x.fillRect(i,y,8,3); y+=12; };
+  text(SHOP.shop_name||"Melano Fast Food",fs+8,"center");
+  // ژمارەی داواکاری لە ناو چوارگۆشەیەکی ڕەش، بە نووسینی سپی
+  { const z=fs+14, bh=Math.round(z*1.5); x.fillRect(P,y+2,W-2*P,bh); x.fillStyle=x.strokeStyle="#fff"; x.font=font(z); x.direction="ltr"; x.textAlign="center";
+    put(o.num,W/2,y+2+Math.round((bh-z)/2)); x.fillStyle=x.strokeStyle="#000"; y+=bh+8; }
+  text(o.t,fs-3,"center");
+  hr();
+  (o.items||[]).forEach(it=>{ row(`${it.n} × ${it.q}`,nf(it.p*it.q)); if(it.note) text("* "+it.note,fs-2); });
+  const sub=(o.total||0)-(o.delivery_fee||0)+(o.discount||0);
+  row("خواردن",nf(sub));
+  if(o.discount) row(`داشکاندن (${o.coupon||""})`,"-"+nf(o.discount));
+  row("گەیاندن",o.delivery_fee?nf(o.delivery_fee):"بێبەرامبەر");
+  hr(true); row("کۆی گشتی",money(o.total),fs+4);
+  if(o.note){ y+=6; const y0=y; y+=6; text("تێبینی: "+o.note,fs,"right","rtl",10); x.lineWidth=3; x.strokeRect(P+1,y0,W-2*P-2,y-y0+4); y+=10; }
+  hr();
+  text(o.cust_name,fs+2); text(o.cust_phone,fs,"right","ltr"); text(o.address,fs);
+  if(o.lat&&o.lng) text("شوێنی GPS هەیە",fs);
+  hr(); text("سوپاس بۆ داواکارییەکەت",fs,"center");
+  const H=(y+8)*s, out=document.createElement("canvas"); out.width=W*s; out.height=H;
+  const ox=out.getContext("2d"); ox.drawImage(c,0,0);
+  // تەنها ڕەش و سپی (بێ خۆڵەمێشی)، بۆ ئەوەی چاپکەر نووسینەکە تەڵخ نەکات
+  const im=ox.getImageData(0,0,out.width,H), d=im.data;
+  for(let i=0;i<d.length;i+=4){ const v=d[i]*.3+d[i+1]*.59+d[i+2]*.11<170?0:255; d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; }
+  ox.putImageData(im,0,0);
+  return out;
+}
+function escposFromCanvas(c){
+  const W=c.width, H=c.height, bw=W/8, d=c.getContext("2d").getImageData(0,0,W,H).data;
+  const parts=[Uint8Array.of(0x1b,0x40)];
+  for(let y0=0;y0<H;y0+=96){
+    const h=Math.min(96,H-y0), b=new Uint8Array(8+bw*h);
+    b.set([0x1d,0x76,0x30,0,bw&255,bw>>8,h&255,h>>8]);
+    for(let y=0;y<h;y++) for(let k=0;k<bw;k++){ let v=0;
+      for(let j=0;j<8;j++){ const i=((y0+y)*W+k*8+j)*4; if(d[i]*.3+d[i+1]*.59+d[i+2]*.11<170) v|=0x80>>j; }
+      b[8+y*bw+k]=v; }
+    parts.push(b);
+  }
+  parts.push(Uint8Array.of(0x1b,0x64,5,0x1d,0x56,0x42,0));
+  const n=parts.reduce((a,p)=>a+p.length,0), all=new Uint8Array(n); let o=0; parts.forEach(p=>{ all.set(p,o); o+=p.length; });
+  return all;
+}
+function rawbtPrint(o){
+  try{
+    const bytes=escposFromCanvas(receiptCanvas(o)); let s="";
+    for(let i=0;i<bytes.length;i+=8192) s+=String.fromCharCode.apply(null,bytes.subarray(i,i+8192));
+    // ئەگەر RawBT دانەمەزرابێت، ئەندرۆید Google Play دەکاتەوە بۆ دابەزاندنی
+    location.href="intent:base64,"+btoa(s)+"#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;";
+  }catch(e){ toast("RawBT کار نەکرد، بە سیستەم چاپ دەکرێت.",true); printQ.push(o); nextPrint(); }
+}
+function paintPrintBar(){
+  const b=$("printBar"); b.hidden=!rawQ.length;
+  if(rawQ.length) b.textContent=`🖨️ چاپکردنی ${rawQ[0].num}`+(rawQ.length>1?` (${rawQ.length} پسوولە)`:"");
+}
+$("printBar").onclick=()=>{ const o=rawQ.shift(); paintPrintBar(); if(o) rawbtPrint(o); };
+$("printVia").value=printVia;
+$("printVia").onchange=()=>{ printVia=$("printVia").value; try{ localStorage.setItem("mln_printvia",printVia); }catch(e){}
+  if(printVia==="rawbt") toast("ئەپی RawBT دابمەزرێنە و چاپکەرەکە تێیدا هەڵبژێرە"); };
+// manual=true کاتێک خاوەن خۆی کرتەی کرد. ئەندرۆید ڕێگە نادات ئەپێکی تر بەبێ کرتە بکرێتەوە، بۆیە چاپی خۆکار دوگمەیەکی گەورە پیشان دەدات
+function printOrder(o,manual){
+  if(printVia==="rawbt"){ if(manual||o.manual) rawbtPrint(o); else { rawQ.push(o); paintPrintBar(); } return; }
+  printQ.push(o); nextPrint();
+}
+// ئەندرۆید: چاپی iframe پێشبینیی پسوولە پیشان دەدات بەڵام هەموو پەڕەی پانێڵ چاپ دەکات.
+// بۆیە پسوولە وەک وێنە دەخرێتە ناو پەڕە سەرەکییەکە و تەنها ئەو وێنەیە چاپ دەکرێت.
+function androidPrint(o){
+  let a=$("prArea"), st=$("prCss");
+  if(!a){ a=document.createElement("div"); a.id="prArea"; document.body.appendChild(a); }
+  if(!st){ st=document.createElement("style"); st.id="prCss"; document.head.appendChild(st); }
+  const c=receiptCanvas(o,3), mmW=PAPER[paper].mm, h=Math.ceil(c.height/24)+4;
+  st.textContent=`@media print{@page{size:${paper}mm ${h}mm;margin:0}#prArea img{width:${mmW}mm}}`;
+  const img=new Image();
+  img.onload=()=>{ a.innerHTML=""; a.appendChild(img); setTimeout(()=>{ window.print();
+    const t0=Date.now();
+    const w=setInterval(()=>{ if(Date.now()-t0>4000&&(document.visibilityState==="visible"||Date.now()-t0>120000)){ clearInterval(w); printing=false; nextPrint(); } },1000);
+  },100); };
+  img.src=c.toDataURL("image/png");
+}
 function nextPrint(){
   if(printing||!printQ.length) return; printing=true;
-  const f=document.createElement("iframe");
-  f.style.cssText=`position:fixed;left:-9999px;top:0;width:${paper}mm;height:800px;border:0`;
-  f.onload=()=>setTimeout(()=>{
-    try{
-      // درێژی کاغەز بەقەد پسوولەکەیە، بۆ ئەوەی کاغەزی زیادە نەڕوات
-      const d=f.contentDocument, h=Math.ceil(d.body.offsetHeight*25.4/96)+2;
-      d.getElementById("pg").textContent=`@page{size:${paper}mm ${h}mm;margin:0}`;
-      f.contentWindow.focus(); f.contentWindow.print();
-    }catch(e){ toast("چاپ نەکرا.",true); }
-    setTimeout(()=>{ f.remove(); printing=false; nextPrint(); },1500);
-  },200);
-  f.srcdoc=receiptHtml(printQ.shift());
-  document.body.appendChild(f);
+  // هەموو ئامێرێک (ئەندرۆید، POS، ویندۆز) هەمان ڕێگا بەکاردەهێنن: وێنەی پسوولە لە پەڕە سەرەکییەکە
+  try{ androidPrint(printQ.shift()); }catch(e){ printing=false; toast("چاپ نەکرا.",true); }
 }
 function autoPrintNew(){
   if(!autoPrint) return;
@@ -389,7 +487,7 @@ function autoPrintNew(){
 }
 $("paper").value=paper;
 $("paper").onchange=()=>{ paper=+$("paper").value; try{ localStorage.setItem("mln_paper",paper); }catch(e){} };
-$("testPrint").onclick=()=>printOrder({num:"TEST",t:new Date().toLocaleString("en-GB"),items:[{n:"برگری تاقیکردنەوە",q:2,p:5000,note:"بێ پیاز"},{n:"کۆکا",q:1,p:1000}],delivery_fee:2000,total:13000,note:"تێبینی تاقیکردنەوە",cust_name:"ناوی کڕیار",cust_phone:"07500000000",address:"ناونیشانی تاقیکردنەوە",lat:1,lng:1});
+$("testPrint").onclick=()=>printOrder({manual:1,num:"TEST",t:new Date().toLocaleString("en-GB"),items:[{n:"برگری تاقیکردنەوە",q:2,p:5000,note:"بێ پیاز"},{n:"کۆکا",q:1,p:1000}],delivery_fee:2000,total:13000,note:"تێبینی تاقیکردنەوە",cust_name:"ناوی کڕیار",cust_phone:"07500000000",address:"ناونیشانی تاقیکردنەوە",lat:1,lng:1});
 $("apOn").checked=autoPrint;
 $("apOn").onchange=()=>{
   autoPrint=$("apOn").checked;
@@ -471,7 +569,7 @@ function paint(d){
     return `<tr><td class="nw"><b>${esc(o.num)}</b></td><td class="nw" style="color:var(--muted)">${esc(o.t)}</td><td class="nw">${esc(o.cust_name)}<small dir="ltr">${esc(o.cust_phone)}</small></td><td style="min-width:130px">${items}</td><td style="min-width:150px;max-width:240px">${esc(o.address)}${map}</td><td><span class="pill ${esc(o.status)}">${ST[o.status]||esc(o.status)}</span></td><td class="nw">${esc(o.driver_name||"—")}</td><td class="nw"><b>${money(o.total)}</b>${o.delivery_fee?`<small>گەیاندن: ${money(o.delivery_fee)}</small>`:""}${o.discount?`<small style="color:var(--ok)">🎟️ ${esc(o.coupon||"")} -${money(o.discount)}</small>`:""}</td><td>${can}</td></tr>`;
   }).join(""):`<tr><td colspan="9" class="empty">هێشتا داواکاری نییە.</td></tr>`;
   lastOrders=d.orders||[]; autoPrintNew();
-  $("orders").querySelectorAll("[data-print]").forEach(b=>b.onclick=()=>{ const o=lastOrders.find(x=>x.num===b.dataset.print); if(o) printOrder(o); });
+  $("orders").querySelectorAll("[data-print]").forEach(b=>b.onclick=()=>{ const o=lastOrders.find(x=>x.num===b.dataset.print); if(o) printOrder(o,true); });
   $("orders").querySelectorAll("[data-cancel]").forEach(b=>b.onclick=async()=>{
     if(!confirm(`داواکاری ${b.dataset.cancel} هەڵبوەشێنرێتەوە؟`))return;
     b.disabled=true; if(await act("owner_cancel_order",{p_num:b.dataset.cancel},"هەڵوەشێنرایەوە ✓")) loop(); else b.disabled=false;
@@ -630,12 +728,23 @@ $("imCancel").onclick=()=>$("itemOv").classList.remove("on");
 ["itemOv","catOv"].forEach(id=>$(id).onclick=e=>{ if(e.target.id===id) $(id).classList.remove("on"); });
 
 // ===== گەیەنەر =====
+// گەیەنەر بە ناو + ژمارەی WhatsApp زیاد دەکرێت؛ PIN ـێکی هەڕەمەکی تەنها لە پشتەوە دروست دەکرێت (کەس پێویستی پێی نییە)
 $("addDrv").onclick=async()=>{
-  const n=$("ndName").value.trim(), p=$("ndPin").value.trim(); if(!n||!p){ toast("ناو و PIN بنووسە.",true); return; }
+  const n=$("ndName").value.trim(), ph=opNum($("ndPin").value);
+  if(!n){ toast("ناوی گەیەنەر بنووسە.",true); return; }
+  if(!ph){ toast("ژمارەی WhatsApp دروست نییە.",true); return; }
   $("addDrv").disabled=true;
-  const ok=await act("owner_add_driver",{p_name:n,p_dpin:p},"گەیەنەر زیاد کرا ✓");
+  const rnd=Array.from(crypto.getRandomValues(new Uint8Array(12)),b=>"abcdefghjkmnpqrstuvwxyz23456789"[b%31]).join("");
+  let ok=await act("owner_add_driver",{p_name:n,p_dpin:rnd},null);
+  if(ok){
+    let d; try{ d=await rpc("owner_data",{p_pin:pin}); }catch(e){ d=null; }
+    const dr=d&&d.ok&&(d.drivers||[]).find(x=>x.name===n);
+    ok=dr?await act("owner_set_driver_phone",{p_id:dr.id,p_phone:ph},"گەیەنەر زیاد کرا ✓ دەتوانێت بە WhatsApp بچێتە ژوورەوە"):null;
+    if(!dr) toast("گەیەنەر زیاد کرا، بەڵام ژمارەکە دانەنرا. لە لیستەکەدا ژمارەکەی دابنێ.",true);
+  }
   $("addDrv").disabled=false;
-  if(ok){ $("ndName").value=""; $("ndPin").value=""; loop(); }
+  if(ok){ $("ndName").value=""; $("ndPin").value=""; }
+  loop();
 };
 
 // ===== ڕێکخستن =====
