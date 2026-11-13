@@ -179,6 +179,10 @@ body.gated{overflow:hidden}
 .ph::after{content:"";position:absolute;inset:auto -20% -60px;height:120px;background:var(--bg);border-radius:50%}
 .ph-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;position:relative;z-index:1}
 .ph-mini{display:flex;align-items:center;gap:8px;font-family:var(--fd);font-weight:800;letter-spacing:.05em;direction:ltr}.ph-mini svg{width:30px;height:30px}
+#roleGate{position:fixed;inset:0;z-index:120;overflow:auto;background:radial-gradient(120% 55% at 50% -8%,var(--soft) 0%,var(--panel) 62%);padding:calc(30px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom))}
+.rg{padding-top:30px}.rg-ico{width:80px;height:80px;margin:0 auto 12px;border-radius:24px;background:linear-gradient(135deg,var(--brand),var(--brand2));display:grid;place-items:center;font-size:40px;box-shadow:0 14px 30px -12px rgba(226,59,46,.6)}
+.gbtn.rgb{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border:0;box-shadow:0 10px 22px -12px rgba(226,59,46,.8)}
+.gbtn.rgb:disabled{opacity:.6}
 .ph-ed{width:38px;height:38px;border-radius:12px;border:0;background:rgba(255,255,255,.18);color:#fff;display:grid;place-items:center;cursor:pointer}
 .av2{position:relative;z-index:1;width:92px;height:92px;margin:0 auto;border-radius:50%;background:#fff;color:var(--brand);display:grid;place-items:center;font-size:2.4rem;font-weight:900;box-shadow:0 12px 26px rgba(0,0,0,.2)}
 .av2::before{content:"";position:absolute;inset:-7px;border-radius:50%;border:3px solid rgba(255,255,255,.55);border-top-color:#ffc93c;animation:avSpin 3s linear infinite}
@@ -317,6 +321,18 @@ a.prow,button.prow{cursor:pointer}a.prow:active,button.prow:active{background:va
     <p class="hint"><a href="privacy.html" style="color:var(--muted)">سیاسەتی تایبەتمەندی</a> · <a href="terms.html" style="color:var(--muted)">مەرجەکان</a> · <a href="delete-account.html" style="color:var(--muted)">سڕینەوەی هەژمار</a></p>
   </div>
 </div>
+<div id="roleGate" hidden>
+  <div class="g-in rg">
+    <div class="rg-ico" aria-hidden="true">👋</div>
+    <h1 class="g-title">چۆن بەردەوام دەبیت؟</h1>
+    <p class="g-sub">ئەم ژمارەیە لە Melano دەسەڵاتی تایبەتی هەیە. دواتر دەتوانیت لە پرۆفایلەوە بیگۆڕیت.</p>
+    <div class="g-btns">
+      <button class="gbtn rgb" type="button" id="rgOwner"><span aria-hidden="true">👨‍🍳</span>پانێڵی چێشتخانە</button>
+      <button class="gbtn rgb" type="button" id="rgDriver"><span aria-hidden="true">🛵</span>پانێڵی شۆفێر · <b id="rgDrvName"></b></button>
+      <button class="gbtn mail" type="button" id="rgCust"><span aria-hidden="true">🛍️</span>وەک کڕیار، داواکردنی خواردن</button>
+    </div>
+  </div>
+</div>
 <div id="profGate" hidden>
   <div class="g-in">
     <div class="lang"><button data-lang="ku">کوردی</button><button data-lang="ar">العربية</button><button data-lang="en">English</button></div>
@@ -400,7 +416,7 @@ function setSession(at,rt){
 function clearLocal(){ ["mln_orders","mln_cust","mln_home"].forEach(k=>LS.del(k)); }
 function signOut(){
   if(session) pushOff();
-  session=null; guest=false; LS.del("mln_auth"); SS.del("mln_auth"); LS.del("mln_uid"); clearLocal();
+  session=null; guest=false; roles=null; LS.del("mln_mode"); LS.del("mln_auth"); SS.del("mln_auth"); LS.del("mln_uid"); clearLocal();
   try{ profile=null; $("profGate").hidden=true; myNum=null; myTok=null; clearInterval(trackTimer); geo=null; syncChip(); $("ordBd").hidden=true; $("olist").innerHTML=""; }catch(e){}
   paintAcct(); paintGate();
 }
@@ -441,10 +457,42 @@ function paintSocial(){
 const MAIL_READY=true;
 // میوان دەتوانێت مینیو ببینێت؛ ناردنی داواکاری هەژماری دەوێت
 let guest=false;
+// ===== یەک ئەپ بۆ هەمووان: ژمارەی WhatsApp دەناسرێتەوە (خاوەن / شۆفێر / کڕیار) =====
+let roles=null;
+// لە پانێڵەکانەوە «?c=1» واتە کەسەکە خۆی ویستی بگەڕێتەوە بۆ ئەپی کڕیار
+(function(){ const q=new URLSearchParams(location.search); if(q.get("c")==="1"){ LS.set("mln_mode","c"); history.replaceState(null,"",location.pathname); } })();
+async function loadRoles(){
+  if(!session||!waPhone()||roles) return;
+  let r; try{ r=await rpc("staff_roles"); }catch(e){ return; }
+  if(!r||!r.ok||!session) return;
+  roles={owner:!!r.owner,driver:r.driver||null};
+  if(!roles.owner&&!roles.driver) return;
+  paintAcct();
+  const m=LS.get("mln_mode");
+  if((m==="owner"&&roles.owner)||(m==="driver"&&roles.driver)) openPanel(m);   // جاری پێشوو ئەم پانێڵەی هەڵبژارد
+  else if(!m) showRoleGate();                                                  // یەکەم جار: بپرسە
+}
+function showRoleGate(){
+  const g=$("roleGate"); if(!g||!roles) return;
+  $("rgOwner").hidden=!roles.owner; $("rgDriver").hidden=!roles.driver;
+  if(roles.driver) $("rgDrvName").textContent=roles.driver;
+  g.hidden=false;
+}
+async function openPanel(role){
+  const g=$("roleGate"); if(g) g.querySelectorAll("button").forEach(b=>b.disabled=true);
+  let r; try{ r=await rpc("staff_open",{p_role:role}); }catch(e){ r=null; }
+  if(g) g.querySelectorAll("button").forEach(b=>b.disabled=false);
+  if(!r||!r.ok){ alert(r&&r.error==="role"?"ئەم ژمارەیە ئیتر ئەم دەسەڵاتەی نییە.":"نەکرا. ئینتەرنێت بپشکنە و دووبارە هەوڵ بدەرەوە."); return; }
+  LS.set("mln_mode",role);
+  if(role==="owner"){ SS.set("mln_own",r.token); location.href="melano-owner.html"; }
+  else { LS.set("mln_drv",JSON.stringify({name:r.name,pin:r.token})); location.href="melano-driver.html"; }
+}
+function asCustomer(){ LS.set("mln_mode","c"); const g=$("roleGate"); if(g) g.hidden=true; }
+$("rgOwner").onclick=()=>openPanel("owner"); $("rgDriver").onclick=()=>openPanel("driver"); $("rgCust").onclick=asCustomer;
 function paintGate(){
   const show=!session&&!guest;
   $("gate").hidden=!show; document.body.classList.toggle("gated",show);
-  if(show) openAuth("start"); else { setTimeout(autoGeo); if(session){ setTimeout(checkProfile); setTimeout(()=>pushOn(false),1500); } }
+  if(show) openAuth("start"); else { setTimeout(autoGeo); if(session){ setTimeout(checkProfile); setTimeout(()=>pushOn(false),1500); setTimeout(loadRoles); } }
 }
 // ===== پرۆفایل: یەکەم جار پاش چوونەژوورەوە پڕ دەکرێتەوە =====
 let profile=null;
@@ -712,6 +760,10 @@ function paintAcct(){
       <section class="psec"><h3>زانیاری کەسی</h3><div class="pcard">
         ${profile?`<div class="prow">${PI(IC.phone)}<span class="plbl">ژمارەی مۆبایل</span><em class="pval" dir="ltr">${esc(localPhone(profile.phone))}</em></div>${profile.gender?`<div class="prow">${PI(IC.user)}<span class="plbl">ڕەگەز</span><em class="pval">${profile.gender==="f"?"کچ":"کوڕ"}</em></div>`:""}${profile.birth?`<div class="prow">${PI(IC.cake)}<span class="plbl">ڕێکەوتی لەدایکبوون</span><em class="pval" dir="ltr">${esc(profile.birth)}</em></div>`:""}`:`<button class="prow" id="pfEdit2">${PI(IC.user)}<span class="plbl">پرۆفایلەکەت تەواو بکە</span>${CHEV}</button>`}
       </div></section>
+      ${roles&&(roles.owner||roles.driver)?`<section class="psec"><h3>کار</h3><div class="pcard">
+        ${roles.owner?`<button class="prow" id="pnOwner">${PI(IC.shield)}<span class="plbl">👨‍🍳 پانێڵی چێشتخانە</span>${CHEV}</button>`:""}
+        ${roles.driver?`<button class="prow" id="pnDriver">${PI(IC.user)}<span class="plbl">🛵 پانێڵی شۆفێر</span>${CHEV}</button>`:""}
+      </div></section>`:""}
       <section class="psec"><h3>ڕێکخستن</h3><div class="pcard">
         ${pushRow()}
         <div class="prow">${PI(IC.globe)}<span class="plbl">زمان</span><div class="lang"><button data-lang="ku">کوردی</button><button data-lang="ar">عربي</button><button data-lang="en">EN</button></div></div>
@@ -725,6 +777,8 @@ function paintAcct(){
       <button class="pdel" id="delAcct">سڕینەوەی هەژمار</button>
       <p class="pver notr">Melano Fast Food</p>`;
     if($("pfEdit2")) $("pfEdit2").onclick=openProfile;
+    if($("pnOwner")) $("pnOwner").onclick=()=>openPanel("owner");
+    if($("pnDriver")) $("pnDriver").onclick=()=>openPanel("driver");
     $("avBtn").onclick=()=>{ if(avBusy) return; if(!profile){ openProfile(); return; } $("avFile").click(); };
     $("avFile").onchange=()=>{ const f=$("avFile").files[0]; $("avFile").value=""; if(f) uploadAvatar(f); };
     $("outBtn").onclick=()=>{ signOut(); loadOrders(); };

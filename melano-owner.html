@@ -101,7 +101,7 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
 </section>
 
 <div id="app" class="wrap" hidden>
-  <div class="top"><b>👑 Melano · خاوەن</b><div style="display:flex;gap:10px;align-items:center"><span class="live"><span class="dot"></span>زیندوو</span><button class="btn ghost sm" id="pushBtn" hidden>🔔 ئاگادارکردنەوە</button><button class="btn ghost sm" id="out">دەرچوون</button></div></div>
+  <div class="top"><b>👑 Melano · خاوەن</b><div style="display:flex;gap:10px;align-items:center"><span class="live"><span class="dot"></span>زیندوو</span><button class="btn ghost sm" id="pushBtn" hidden>🔔 ئاگادارکردنەوە</button><a class="btn ghost sm" href="index.html?c=1" style="text-decoration:none">🛍️ کڕیار</a><button class="btn ghost sm" id="out">دەرچوون</button></div></div>
   <nav class="tabs">
     <button data-t="orders" aria-pressed="true">📋 داواکاری <span class="bdg" id="pendBdg" hidden></span></button>
     <button data-t="menu" aria-pressed="false">🍔 مینیو و نرخ</button>
@@ -205,6 +205,12 @@ td a{color:var(--brand);font-weight:700;text-decoration:none;font-size:.82rem}
       <div id="cList" style="margin-top:12px"></div>
     </div>
     <div class="card">
+      <h2>📱 ژمارەکانی خاوەن (WhatsApp)</h2>
+      <p style="color:var(--muted);font-size:.85rem;margin:0 0 10px">ئەم ژمارانە کاتێک بە WhatsApp دەچنە ناو ئەپی Melano، ڕاستەوخۆ ئەم پانێڵە دەبینن، بێ پاسوۆرد. بۆ شۆفێرەکان، ژمارەکەیان لە تابی «گەیەنەر» دابنێ.</p>
+      <div id="opList"></div>
+      <div class="row" style="align-items:end;margin-top:8px"><div class="f"><label for="opName">ناو</label><input id="opName" maxlength="40" placeholder="بۆ نموونە: کاشێر"></div><div class="f"><label for="opPhone">ژمارەی مۆبایل</label><input id="opPhone" inputmode="tel" dir="ltr" placeholder="0750 123 4567"></div><button class="btn" id="opAdd">زیادکردن</button></div>
+    </div>
+    <div class="card">
       <h2>🔒 گۆڕینی پاسوۆرد</h2>
       <div class="row">
         <div class="f"><label>پاسوۆردی ئێستا</label><input id="np0" type="password" autocomplete="current-password"></div>
@@ -297,7 +303,7 @@ function enter(data){
   $("login").hidden=true; $("app").hidden=false; if(data)paint(data);
   clearInterval(timer); timer=setInterval(loop,5000);
   let t="orders"; try{ t=sessionStorage.getItem("mln_tab")||"orders"; }catch(e){}
-  showTab(t); loadMenu(); pushOn(false);
+  showTab(t); loadMenu(); pushOn(false); loadOwnerPhones();
 }
 $("go").onclick=login; $("pin").onkeydown=e=>{if(e.key==="Enter")login();};
 $("out").onclick=async()=>{ clearInterval(timer); await pushOff(); try{sessionStorage.removeItem("mln_own");}catch(e){} location.reload(); };
@@ -768,6 +774,20 @@ $("saveShop").onclick=async()=>{
   $("saveShop").disabled=true;
   const ok=await act("owner_set_settings",{p_data:{shop_name:$("sName").value.trim()||"Melano Fast Food",tagline:$("sTag").value.trim(),delivery_time:$("sTime").value.trim(),delivery_fee:fee,discount_all:disc,delivery_zones:JSON.stringify(zs),whatsapp:$("sWa").value.replace(/\D/g,"")}},"پاشەکەوت کرا ✓");
   $("saveShop").disabled=false; if(ok){ zonesDirty=false; loadMenu(); }
+};
+// ===== ژمارەکانی خاوەن: چوونەژوورەوە بە WhatsApp لە ئەپی Melano =====
+const opNum = v => { let d=String(v||"").replace(/[٠-٩]/g,c=>"٠١٢٣٤٥٦٧٨٩".indexOf(c)).replace(/\D/g,""); if(d.startsWith("00")) d=d.slice(2); if(d.startsWith("964")) d=d.slice(3); if(d.startsWith("0")) d=d.slice(1); return /^7\d{9}$/.test(d)?"+964"+d:null; };
+async function loadOwnerPhones(){
+  let r; try{ r=await rpc("owner_phones_list",{p_pin:pin}); }catch(e){ return; }
+  if(!r||!r.ok){ $("opList").innerHTML=`<p style="color:var(--muted);font-size:.85rem">ئەم بەشە پێویستی بە نوێکردنەوەی ٢٦ هەیە.</p>`; return; }
+  $("opList").innerHTML=r.phones.length?r.phones.map(p=>`<div class="link"><span style="flex:1">${esc(p.name||"خاوەن")} · <b dir="ltr">${esc(p.phone.replace(/^\+964/,"0"))}</b></span><button class="btn ghost sm red" data-opdel="${esc(p.phone)}">لابردن</button></div>`).join(""):`<p style="color:var(--muted);font-size:.85rem">هێشتا هیچ ژمارەیەک نییە.</p>`;
+  $("opList").querySelectorAll("[data-opdel]").forEach(b=>b.onclick=async()=>{ if(!confirm("ئەم ژمارەیە لاببرێت؟ ئیتر ناتوانێت ئەم پانێڵە لە ئەپەکەوە بکاتەوە.")) return; if(await act("owner_phone_set",{p_phone:b.dataset.opdel,p_name:null,p_add:false},"لابرا ✓")) loadOwnerPhones(); });
+}
+$("opAdd").onclick=async()=>{
+  const ph=opNum($("opPhone").value); if(!ph){ toast("ژمارەی مۆبایل دروست نییە.",true); return; }
+  $("opAdd").disabled=true;
+  const ok=await act("owner_phone_set",{p_phone:ph,p_name:$("opName").value.trim()||null,p_add:true},"زیاد کرا ✓");
+  $("opAdd").disabled=false; if(ok){ $("opPhone").value=""; $("opName").value=""; loadOwnerPhones(); }
 };
 $("npShow").onchange=()=>["np0","np1","np2"].forEach(id=>$(id).type=$("npShow").checked?"text":"password");
 $("savePin").onclick=async()=>{
